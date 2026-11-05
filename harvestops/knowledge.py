@@ -19,6 +19,7 @@ DOCUMENTS = (
     KnowledgeDocument("KPI definitions", "Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments.", "knowledge/kpi-definitions.md"),
     KnowledgeDocument("Dock exception playbook", "For a late departure, confirm appointment, carrier arrival, and quantity before changing status or escalating.", "knowledge/dock-operations.md", frozenset({"viewer", "operator", "admin"})),
     KnowledgeDocument("Purchase controls", "A requester cannot approve their own request. Approval decisions require the pending state and current version.", "knowledge/purchasing.md", frozenset({"approver", "admin"})),
+    KnowledgeDocument("Shipment exception handling", "Repeated shipment imports are idempotent by external shipment reference. Invalid rows are rejected into the import error report and do not overwrite the accepted shipment record.", "knowledge/shipment-exceptions.md"),
 )
 
 
@@ -35,8 +36,15 @@ class KnowledgeService:
         terms = [term for term in (query or "").lower().split() if term]
         if not terms:
             return []
-        hits = [document for document in DOCUMENTS if self._allowed(user, document) and any(term in f"{document.title} {document.body}".lower() for term in terms)]
-        return hits[: max(1, min(limit, 3))]
+        scored = []
+        for document in DOCUMENTS:
+            if self._allowed(user, document):
+                text = f"{document.title} {document.body}".lower()
+                score = sum(term in text for term in terms)
+                if score:
+                    scored.append((score, document))
+        scored.sort(key=lambda item: -item[0])
+        return [document for _, document in scored[: max(1, min(limit, 3))]]
 
     def answer_with_claude(self, query: str, documents: list[KnowledgeDocument]) -> dict:
         if not self.api_key:

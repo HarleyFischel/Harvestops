@@ -6,7 +6,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- `.venv312/bin/python -m pytest -q` passed: 22 tests, with 1 SQL integration test skipped because no connection string was supplied.
+- `.venv312/bin/python -m pytest -q` passed: 23 tests, with 1 SQL integration test skipped because no connection string was supplied.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
@@ -20,7 +20,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
-- SQL migration 003 adds `dbo.usp_change_shipment_status` with rowversion and transition checks; procedure execution is pending the external SQL Server gate.
+- SQL migrations 003 and 004 add the shipment-status and staged-import procedures/tables; procedure execution is pending the external SQL Server gate.
+- The deterministic local retrieval evaluation passed 4/4 exact-source checks; see `docs/retrieval-evaluation.md`.
 - Source includes separate ARM64 Mac app Compose, x86-64 SQL Server Compose, Codespaces setup, SQL migrations, production Dockerfile, GitHub Actions, Bicep, MCP, token exchange, benchmark, and legacy example.
 
 ## Pending or unverified

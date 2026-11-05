@@ -1,0 +1,6 @@
+[
+  {"query": "How is fill rate calculated?", "expected_source": "knowledge/kpi-definitions.md"},
+  {"query": "What should I check for a late departure?", "expected_source": "knowledge/dock-operations.md"},
+  {"query": "Can a requester approve their own request?", "expected_source": "knowledge/purchasing.md"},
+  {"query": "How are repeated shipment imports handled?", "expected_source": "knowledge/shipment-exceptions.md"}
+]
