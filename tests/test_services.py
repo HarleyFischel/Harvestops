@@ -38,6 +38,7 @@ def test_status_transition_and_optimistic_concurrency():
     operator = store.users["demo.operator"]
     updated = store.change_status("SHP-1004", "In Transit", operator, 1)
     assert updated.version == 2
+    assert store.audit[-1].action == "shipment.status_changed"
     with pytest.raises(DomainError, match="stale"):
         store.change_status("SHP-1004", "Delivered", operator, 1)
 

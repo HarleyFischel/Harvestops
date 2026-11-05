@@ -22,6 +22,17 @@ def test_export_requires_operator_role():
     assert "shipment_id" in response.text
 
 
+def test_export_prefixes_formula_like_cells():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    client.post("/auth/demo", json={"username": "demo.operator"})
+    # Mutate only this test's isolated demo store through its closure-backed service.
+    store = next(cell.cell_contents for cell in app.server.view_functions["export_shipments"].__closure__ if hasattr(cell.cell_contents, "shipments"))
+    store.shipments["SHP-1001"].customer = "=HYPERLINK(\"https://example.test\")"
+    response = client.get("/api/shipments/export")
+    assert "'=HYPERLINK" in response.text
+
+
 def test_demo_identity_cannot_be_enabled_in_production():
     try:
         make_app(Settings(secret_key="test", app_env="production", demo_mode=True, storage_mode="demo"))
@@ -63,7 +74,7 @@ def test_production_rejects_default_secret():
 def test_entra_layout_does_not_expose_demo_role_switch():
     settings = Settings(identity_mode="entra", demo_mode=False, storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant", session_redis_url="redis://localhost:6379/0")
     app = make_app(settings)
-    assert "role-switch" not in str(app.layout)
+    assert "role-switch" not in str(app.layout())
 
 
 def test_session_claims_reconstruct_entra_principal_across_workers():

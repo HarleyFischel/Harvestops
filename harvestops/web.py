@@ -9,7 +9,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, dash_table, dcc, html, no_update
 from dash_ag_grid import AgGrid
-from flask import Flask, jsonify, make_response, redirect, request, session
+from flask import Flask, has_request_context, jsonify, make_response, redirect, request, session
 
 from .auth import EntraAuth
 from .config import Settings, get_settings
@@ -45,9 +45,10 @@ def csrf_token() -> str:
     return token
 
 
-def valid_csrf(token: str | None) -> bool:
+def valid_csrf(token: str | None, allow_cookie: bool = True) -> bool:
     expected = session.get("csrf_token")
-    return bool(expected and token and secrets.compare_digest(token, expected))
+    supplied = token or (request.cookies.get("harvestops_csrf") if allow_cookie else None)
+    return bool(expected and supplied and secrets.compare_digest(supplied, expected))
 
 
 def require_role(store: InMemoryStore, *roles):
@@ -67,7 +68,8 @@ def build_layout(store: InMemoryStore, settings: Settings):
     return html.Div([
         dcc.Location(id="url"),
         dcc.Store(id="active-user", data="demo.viewer"),
-        dcc.Store(id="csrf-token"),
+        dcc.Store(id="csrf-token", data=csrf_token() if has_request_context() else None),
+        html.Div(id="csrf-status", className="visually-hidden", role="status", **{"data-csrf-token": ""}),
         html.Header([
             html.Div([html.Div("HARVESTOPS", className="brand"), html.Div("Produce operations control plane", className="tagline")], className="brand-lockup"),
             html.Div([html.Span("SYNTHETIC DATA · DEMO MODE" if demo_identity else "SYNTHETIC DATA · ENTRA IDENTITY", className="demo-pill"), html.Span(id="user-label", className="user-label")], className="header-meta"),
@@ -93,6 +95,11 @@ def build_layout(store: InMemoryStore, settings: Settings):
 
 def metric_card(label, value, suffix="", note=""):
     return html.Div([html.Div(label, className="metric-label"), html.Div([html.Span(value, className="metric-value"), html.Span(suffix, className="metric-suffix")]), html.Div(note, className="metric-note")], className="metric-card")
+
+
+def csv_safe(value) -> str:
+    text = str(value)
+    return "'" + text if text.startswith(("=", "+", "-", "@")) else text
 
 
 def dashboard_view(store: InMemoryStore):
@@ -169,6 +176,8 @@ def make_app(settings: Settings | None = None):
 
     @server.after_request
     def security_headers(response):
+        if current_user(store):
+            response.set_cookie("harvestops_csrf", csrf_token(), httponly=False, secure=settings.app_env == "production", samesite="Lax", max_age=1800)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -254,7 +263,7 @@ def make_app(settings: Settings | None = None):
         writer = csv.writer(output)
         writer.writerow(["shipment_id", "customer", "product", "status", "freight_cost"])
         for row in store.export_shipments():
-            writer.writerow([row["shipment_id"], row["customer"], row["product"], row["status"], "'" + str(row["freight_cost"])])
+            writer.writerow([csv_safe(row["shipment_id"]), csv_safe(row["customer"]), csv_safe(row["product"]), csv_safe(row["status"]), csv_safe(row["freight_cost"])])
         response = make_response(output.getvalue())
         response.headers["Content-Type"] = "text/csv"
         response.headers["Content-Disposition"] = "attachment; filename=harvestops-shipments.csv"
@@ -265,7 +274,7 @@ def make_app(settings: Settings | None = None):
     def import_shipments():
         try:
             supplied = request.headers.get("X-CSRF-Token", "")
-            if not valid_csrf(supplied):
+            if not valid_csrf(supplied, allow_cookie=False):
                 return jsonify({"error": "CSRF token required"}), 403
             actor = current_user(store)
             text = request.get_data(as_text=True)
@@ -276,15 +285,16 @@ def make_app(settings: Settings | None = None):
             return jsonify({"error": str(exc)}), 400
 
     app = Dash(__name__, server=server, title="HarvestOps", assets_folder=str(Path(__file__).parent / "assets"), suppress_callback_exceptions=True)
-    app.layout = build_layout(store, settings)
+    app.layout = lambda: build_layout(store, settings)
 
     @app.callback(Output("page-content", "children"), Input("nav", "value"))
     def switch_page(page):
         return {"dashboard": dashboard_view(store), "shipments": shipments_view(store), "purchasing": purchasing_view(), "knowledge": knowledge_view()}.get(page, dashboard_view(store))
 
-    @app.callback(Output("csrf-token", "data"), Input("url", "pathname"))
+    @app.callback(Output("csrf-token", "data"), Output("csrf-status", "children"), Output("csrf-status", "data-csrf-token"), Input("url", "pathname"))
     def initialize_csrf(_):
-        return csrf_token()
+        token = csrf_token()
+        return token, "ready", token
 
     @app.callback(Output("user-label", "children"), Input("role-switch", "value"))
     def role_label(username):
@@ -293,9 +303,9 @@ def make_app(settings: Settings | None = None):
             return ""
         return f"{user.display_name} · {', '.join(sorted(user.roles))}"
 
-    @app.callback(Output("active-user", "data"), Input("role-switch", "value"), State("csrf-token", "data"))
-    def switch_user(username, token):
-        if settings.demo_mode and valid_csrf(token) and username in store.users:
+    @app.callback(Output("active-user", "data"), Input("role-switch", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"))
+    def switch_user(username, token, status_token):
+        if settings.demo_mode and (valid_csrf(token) or valid_csrf(status_token)) and username in store.users:
             session["username"] = username
             return username
         return no_update
@@ -322,10 +332,10 @@ def make_app(settings: Settings | None = None):
         data = [{"shipment_id": r.shipment_id, "customer": r.customer, "product": r.product, "facility": r.facility, "carrier": r.carrier, "planned_departure": r.planned_departure_utc.isoformat(), "actual_departure": r.actual_departure_utc.isoformat() if r.actual_departure_utc else "", "ordered_qty": str(r.ordered_qty), "shipped_qty": str(r.shipped_qty), "freight_cost": str(r.freight_cost), "status": r.status, "version": r.version} for r in rows]
         return data, f"Page {min(page, max_page)} of {max_page} · {total} matching shipments"
 
-    @app.callback(Output("shipment-alert", "children"), Input("apply-status", "n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), prevent_initial_call=True)
-    def apply_status(_, shipment_id, new_status, version, token):
+    @app.callback(Output("shipment-alert", "children"), Input("apply-status", "n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    def apply_status(_, shipment_id, new_status, version, token, status_token):
         try:
-            if not valid_csrf(token):
+            if not (valid_csrf(token) or valid_csrf(status_token)):
                 raise PermissionError("CSRF token required")
             user = current_user(store)
             updated = store.change_status(shipment_id, new_status, user, int(version))
@@ -333,11 +343,11 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not apply change: {exc}"
 
-    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), prevent_initial_call=True)
-    def import_from_upload(contents, filename, token):
+    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    def import_from_upload(contents, filename, token, status_token):
         try:
             import base64
-            if not valid_csrf(token):
+            if not (valid_csrf(token) or valid_csrf(status_token)):
                 raise PermissionError("CSRF token required")
             user = current_user(store)
             if not user or not user.roles.intersection({"operator", "admin"}):
@@ -348,11 +358,11 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
             return f"Import failed: {exc}"
 
-    @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), State("csrf-token", "data"), prevent_initial_call=True)
-    def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version, token):
+    @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version, token, status_token):
         from dash import ctx
         try:
-            if not valid_csrf(token):
+            if not (valid_csrf(token) or valid_csrf(status_token)):
                 raise PermissionError("CSRF token required")
             user = current_user(store)
             if ctx.triggered_id == "create-purchase":
