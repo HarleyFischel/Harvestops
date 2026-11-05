@@ -6,7 +6,7 @@ HarvestOps includes a small read-only MCP server using the official Python SDK. 
 python -m harvestops.mcp_server
 ```
 
-The tools are `lookup_shipment`, `list_shipment_exceptions`, and `approved_kpi_definitions`. Each local call requires a known demo principal and applies a result limit. The local tests cover successful lookup, exception limits, and unknown-principal rejection.
+The tools are `lookup_shipment`, `list_shipment_exceptions`, and `approved_kpi_definitions`. Each local call requires a known demo principal, validates bounded inputs, reuses the service-layer shipment and knowledge objects, and applies a result limit. The local tests cover successful lookup, exception limits, input validation, and unknown-principal rejection.
 
 For an exposed deployment, set `MCP_EXPOSED=true`, `MCP_AUTH_PUBLIC_KEY`, `MCP_AUTH_ISSUER`, and `MCP_AUTH_AUDIENCE`. Tool calls must include an RS256 token whose verified subject matches `principal`, with `iss`, `aud`, `iat`, `nbf`, `exp`, and a recognized role claim. Missing or invalid configuration fails closed. Do not treat a caller-supplied principal string as authentication.
 

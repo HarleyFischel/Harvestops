@@ -6,8 +6,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- `.venv312/bin/python -m pytest -q` passed: 33 tests, with 1 SQL integration test skipped because no connection string was supplied.
-- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 33 passed / 1 skipped result and a redacted configuration summary.
+- `.venv312/bin/python -m pytest -q` passed: 34 tests, with 1 SQL integration test skipped because no connection string was supplied.
+- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 34 passed / 1 skipped result and a redacted configuration summary.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
@@ -22,6 +22,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
+- SQL shipment imports now stage parsed rows in `staging.shipment_updates` and execute the versioned validation/apply procedure before reporting applied and rejected rows; this implementation path is not live-connection verified.
+- Production configuration now fails closed unless storage is SQL Server, SQL encryption is enabled, and `TrustServerCertificate` is disabled; structured log formatting redacts common secret-shaped key/value messages.
 - SQL migrations 003–006 add the shipment-status and staged-import procedures/tables, pending-purchase/knowledge seed records; procedure execution is pending the external SQL Server gate.
 - The deterministic local retrieval evaluation passed 4/4 exact-source checks; see `docs/retrieval-evaluation.md`.
 - Dashboard KPI scope now includes planned-departure date range and seeded production-run/labor records; the date-scope service test passed.
@@ -31,7 +33,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 ## Pending or unverified
 
 - External SQL Server was not configured. The local `.env` still contains the example endpoint `host.example.internal,1433`; a connection attempt was not claimed as successful. Needed: reachable host/IP and port, database name, application login/password or Entra/managed identity plan, TLS certificate chain, and firewall/VPN access. The app will use SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT=true, and SQL_TRUST_SERVER_CERTIFICATE=false. The host Python environment also lacks the unixODBC runtime; the application images include ODBC Driver 18 and unixODBC.
-- Separate ARM64 and AMD64 builds completed successfully from commit `d550ad2`. `harvestops:arm64-final4` produced manifest `10be5347d8cdf50f8778ef5becd2069ab6d779b07ef55e8963df7d9492e9d634`; `harvestops:amd64-final4` produced manifest `2f820a5efcb462a30165c8708060547975b5d88c783c821b4a97e52f88306762`. `docker image inspect` reported `arm64 linux` and `amd64 linux`; both temporary containers ran as `appuser`, imported Dash/AG Grid/Flask/MCP/pyodbc, reported ODBC Driver 18, returned `/healthz` 200, and returned root HTTP 200. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
+- Separate ARM64 and AMD64 builds completed successfully from application commit `6060c05`. `harvestops:arm64-final5` produced manifest `2a20df383cff2eed99d4cd82252b10b46363c3c42b722bb3dd543e612ca5bb5c`; `harvestops:amd64-final5` produced manifest `cab3d64b325eba9bb1d3e987c66e4614646b1ae156c67b190bf6d5ac8bf18434`. `docker image inspect` reported `arm64 linux` and `amd64 linux`; both temporary containers ran as `appuser`, imported Dash/AG Grid/Flask/MCP/pyodbc, reported ODBC Driver 18, returned `/healthz` 200, and returned root HTTP 200. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
 - Playwright browser smoke passed 4 tests against the running local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status plus purchase approval workflow, and a 390px mobile viewport rendering check.
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude provider calls, and remote MCP are configuration-only until credentials and authorization are supplied. The local Claude adapter and MCP tool code are implemented and unit/runtime import checked; remote calls were not claimed.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access. The new migration 005 validation procedure is implemented but not executed against SQL Server.
