@@ -258,6 +258,8 @@ def make_app(settings: Settings | None = None):
 
     @server.post("/auth/logout")
     def logout():
+        if current_user(store) and not valid_csrf(request.headers.get("X-CSRF-Token", ""), allow_cookie=False):
+            return jsonify({"error": "CSRF token required"}), 403
         session.clear()
         return jsonify({"status": "signed_out"})
 

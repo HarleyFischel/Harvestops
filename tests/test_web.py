@@ -102,7 +102,9 @@ def test_entra_routes_are_closed_in_demo_mode():
     client = app.server.test_client()
     assert client.get("/auth/login").status_code == 403
     client.post("/auth/demo", json={"username": "demo.viewer"})
-    assert client.post("/auth/logout").get_json()["status"] == "signed_out"
+    assert client.post("/auth/logout").status_code == 403
+    token = client.get("/api/csrf").get_json()["csrf_token"]
+    assert client.post("/auth/logout", headers={"X-CSRF-Token": token}).get_json()["status"] == "signed_out"
 
 
 def test_dash_surface_redirects_unauthenticated_entra_requests():
