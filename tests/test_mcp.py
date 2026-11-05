@@ -19,6 +19,10 @@ def test_mcp_tools_require_principal_and_limit_results():
     assert len(list_shipment_exceptions("demo.viewer", 100)) <= 20
     with pytest.raises(PermissionError):
         lookup_shipment("SHP-1001", "unknown")
+    with pytest.raises(ValueError):
+        lookup_shipment("x" * 31, "demo.viewer")
+    with pytest.raises(ValueError):
+        list_shipment_exceptions("demo.viewer", "many")
 
 
 def test_exposed_mcp_requires_verified_principal_token(monkeypatch):

@@ -126,6 +126,9 @@ class InMemoryStore:
     def filter_options(self) -> dict[str, list[str]]:
         return {field: sorted({getattr(row, field) for row in self.shipments.values()}) for field in ("customer", "product", "facility")}
 
+    def get_shipment(self, shipment_id: str) -> Shipment | None:
+        return self.shipments.get(shipment_id)
+
     def export_shipments(self) -> list[dict]:
         return [{"shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "status": row.status, "freight_cost": row.freight_cost} for row in self.shipments.values()]
 

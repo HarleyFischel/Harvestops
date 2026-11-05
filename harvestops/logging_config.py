@@ -2,7 +2,19 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
+
+_SENSITIVE_VALUE = re.compile(
+    r"(?i)\b(password|passwd|secret|api[_-]?key|authorization|bearer|token)\b"
+    r"(\s*[:=]\s*)([^\s,;]+)"
+)
+
+
+def redact_message(message: str) -> str:
+    """Remove common secret-shaped values before they reach a log sink."""
+
+    return _SENSITIVE_VALUE.sub(r"\1\2[REDACTED]", message)
 
 
 class JsonFormatter(logging.Formatter):
@@ -12,7 +24,7 @@ class JsonFormatter(logging.Formatter):
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "level": record.levelname,
                 "logger": record.name,
-                "message": record.getMessage(),
+                "message": redact_message(record.getMessage()),
             },
             ensure_ascii=False,
         )

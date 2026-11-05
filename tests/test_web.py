@@ -2,7 +2,7 @@ import json
 import logging
 
 from harvestops.config import Settings
-from harvestops.logging_config import JsonFormatter
+from harvestops.logging_config import JsonFormatter, redact_message
 from harvestops.web import make_app
 
 
@@ -22,6 +22,7 @@ def test_structured_log_formatter_emits_safe_json():
     assert payload["logger"] == "harvestops.test"
     assert payload["message"] == "workflow ok"
     assert payload["timestamp"].endswith("+00:00")
+    assert redact_message("password=topsecret token: abc123") == "password=[REDACTED] token: [REDACTED]"
 
 
 def test_export_requires_operator_role():
@@ -81,6 +82,29 @@ def test_production_rejects_default_secret():
         assert "SECRET_KEY" in str(exc)
     else:
         raise AssertionError("production must reject the default secret")
+
+
+def test_production_requires_verified_sql_connections():
+    settings = Settings(
+        app_env="production",
+        demo_mode=False,
+        identity_mode="entra",
+        storage_mode="sqlserver",
+        secret_key="x" * 48,
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+        session_redis_url="redis://localhost:6379/0",
+        sql_server="sql.example",
+        sql_database="HarvestOps",
+        sql_user="app",
+        sql_password="secret",
+        sql_encrypt=False,
+        sql_trust_server_certificate=True,
+    )
+    errors = settings.validate_for_runtime()
+    assert "SQL_ENCRYPT must be true in production" in errors
+    assert "SQL_TRUST_SERVER_CERTIFICATE must be false in production" in errors
 
 
 def test_entra_layout_does_not_expose_demo_role_switch():

@@ -5,13 +5,29 @@ import jwt
 from mcp.server.fastmcp import FastMCP
 
 from .domain import User
+from .knowledge import KnowledgeService
 from .services import InMemoryStore
 
 mcp = FastMCP("HarvestOps read-only operations")
 store = InMemoryStore()
+knowledge = KnowledgeService()
+
+
+def _validate_principal(principal: str) -> None:
+    if not isinstance(principal, str) or not principal or len(principal) > 200:
+        raise ValueError("principal must be a non-empty value under 200 characters")
+
+
+def _bounded_limit(limit: int) -> int:
+    try:
+        value = int(limit)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("limit must be an integer") from exc
+    return max(1, min(value, 20))
 
 
 def _require_principal(principal: str, auth_token: str = ""):
+    _validate_principal(principal)
     public_key = os.getenv("MCP_AUTH_PUBLIC_KEY", "")
     exposed = os.getenv("MCP_EXPOSED", "false").lower() == "true" or bool(public_key)
     if exposed:
@@ -44,7 +60,9 @@ def _require_principal(principal: str, auth_token: str = ""):
 @mcp.tool()
 def lookup_shipment(shipment_id: str, principal: str, auth_token: str = "") -> dict:
     _require_principal(principal, auth_token)
-    row = store.shipments.get(shipment_id)
+    if not isinstance(shipment_id, str) or not shipment_id or len(shipment_id) > 30:
+        raise ValueError("shipment_id must be a non-empty value under 30 characters")
+    row = store.get_shipment(shipment_id)
     if not row:
         return {"found": False}
     return {"found": True, "shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "facility": row.facility, "status": row.status, "ordered_qty": str(row.ordered_qty), "shipped_qty": str(row.shipped_qty)}
@@ -53,14 +71,15 @@ def lookup_shipment(shipment_id: str, principal: str, auth_token: str = "") -> d
 @mcp.tool()
 def list_shipment_exceptions(principal: str, limit: int = 20, auth_token: str = "") -> list[dict]:
     _require_principal(principal, auth_token)
-    limit = max(1, min(limit, 20))
-    return [{"shipment_id": row.shipment_id, "status": row.status, "customer": row.customer, "fill_rate": round(row.fill_rate, 4)} for row in store.shipments.values() if row.status == "Exception"][:limit]
+    limit = _bounded_limit(limit)
+    rows, _ = store.list_shipments({"exceptions_only": True}, 1, limit)
+    return [{"shipment_id": row.shipment_id, "status": row.status, "customer": row.customer, "fill_rate": round(row.fill_rate, 4)} for row in rows]
 
 
 @mcp.tool()
 def approved_kpi_definitions(principal: str, auth_token: str = "") -> list[dict]:
-    _require_principal(principal, auth_token)
-    return [{"name": "fill_rate", "definition": "shipped quantity / ordered quantity"}, {"name": "on_time_rate", "definition": "on-time departures / closed shipments"}]
+    user = _require_principal(principal, auth_token)
+    return knowledge.approved_kpi_definitions(user)
 
 
 if __name__ == "__main__":

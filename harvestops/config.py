@@ -35,6 +35,12 @@ class Settings(BaseSettings):
             errors.append("DEMO_MODE must be false in production")
         if self.app_env == "production" and self.identity_mode != "entra":
             errors.append("IDENTITY_MODE must be entra in production")
+        if self.app_env == "production" and self.storage_mode != "sqlserver":
+            errors.append("STORAGE_MODE must be sqlserver in production")
+        if self.app_env == "production" and not self.sql_encrypt:
+            errors.append("SQL_ENCRYPT must be true in production")
+        if self.app_env == "production" and self.sql_trust_server_certificate:
+            errors.append("SQL_TRUST_SERVER_CERTIFICATE must be false in production")
         if self.identity_mode == "entra":
             for name in ("entra_client_id", "entra_client_secret", "entra_tenant_id"):
                 if not getattr(self, name):

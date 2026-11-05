@@ -8,7 +8,7 @@ import csv
 import io
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from .config import Settings
@@ -185,43 +185,83 @@ class SqlServerStore:
         if not actor or ("operator" not in actor.roles and "admin" not in actor.roles):
             raise PermissionError("Operator role required")
         reader = csv.DictReader(io.StringIO(text))
-        errors, valid, seen = [], [], set()
+        staged, seen = [], set()
         for line_no, row in enumerate(reader, 2):
+            shipment_id = (row.get("shipment_id") or "").strip()
+            references = {field: (row.get(field) or "").strip() for field in ("customer", "product", "facility", "carrier")}
+            dock = (row.get("dock") or "D-01").strip()
+            status = (row.get("status") or "Scheduled").strip()
+            validation_error = None
+            qty = shipped = freight = planned = None
             try:
-                shipment_id = (row.get("shipment_id") or "").strip()
                 qty, shipped = Decimal(row["ordered_qty"]), Decimal(row["shipped_qty"])
                 planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
-                status = row.get("status", "Scheduled")
                 freight = Decimal(row.get("freight_cost", "0"))
-                references = {field: (row.get(field) or "").strip() for field in ("customer", "product", "facility", "carrier")}
-                if not shipment_id or shipment_id in seen:
-                    errors.append({"line": line_no, "error": "missing or duplicate shipment_id"})
-                    continue
-                if not all(references.values()) or planned.tzinfo is None or qty <= 0 or shipped < 0 or shipped > qty or freight < 0 or status not in STATUSES:
-                    raise ValueError
+            except (KeyError, InvalidOperation, TypeError, ValueError):
+                validation_error = "invalid shipment record"
+            if not shipment_id:
+                validation_error = validation_error or "missing shipment_id"
+            elif shipment_id in seen:
+                validation_error = validation_error or "duplicate shipment_id"
+            else:
                 seen.add(shipment_id)
-                valid.append((line_no, row, qty, shipped, planned.astimezone(timezone.utc), freight, status, references))
-            except (KeyError, InvalidOperation, ValueError):
-                errors.append({"line": line_no, "error": "invalid shipment record"})
-        run_id = "SQL-" + secrets.token_hex(5).upper()
-        applied = 0
+            if validation_error is None and (
+                not all(references.values())
+                or planned is None
+                or planned.tzinfo is None
+                or qty is None
+                or shipped is None
+                or freight is None
+                or not qty.is_finite()
+                or not shipped.is_finite()
+                or not freight.is_finite()
+                or qty <= 0
+                or shipped < 0
+                or shipped > qty
+                or freight < 0
+                or status not in STATUSES
+            ):
+                validation_error = "invalid shipment record"
+            staged.append(
+                (
+                    line_no,
+                    shipment_id or None,
+                    references["customer"] or None,
+                    references["product"] or None,
+                    references["facility"] or None,
+                    references["carrier"] or None,
+                    dock or None,
+                    planned.astimezone(timezone.utc).replace(tzinfo=None) if planned and planned.tzinfo else None,
+                    qty,
+                    shipped,
+                    freight,
+                    status or None,
+                    validation_error,
+                )
+            )
         with self.repository.connect() as conn:
             run_row = self.repository.rows(conn.execute("INSERT dbo.import_runs(source_name, status) OUTPUT INSERTED.import_run_id VALUES ('shipment-update.csv', 'Started')"))[0]
-            run_id = f"IMP-{run_row['import_run_id']:04d}"
-            for line_no, row, qty, shipped, planned, freight, status, references in valid:
-                exists = self.repository.rows(conn.execute("SELECT 1 AS found FROM dbo.shipments WHERE shipment_id = ?", row["shipment_id"]))
-                if exists:
-                    continue
-                refs = self.repository.rows(conn.execute("""SELECT c.customer_id, p.product_id, f.facility_id, ca.carrier_id FROM dbo.customers c CROSS JOIN dbo.products p CROSS JOIN dbo.facilities f CROSS JOIN dbo.carriers ca WHERE c.customer_name=? AND p.product_name=? AND f.facility_name=? AND ca.carrier_name=?""", references["customer"], references["product"], references["facility"], references["carrier"]))
-                if not refs:
-                    errors.append({"line": line_no, "error": "unknown customer, product, facility, or carrier"})
-                    continue
-                ref = refs[0]
-                conn.execute("""INSERT dbo.shipments(shipment_id, customer_id, product_id, facility_id, carrier_id, dock_code, appointment_utc, planned_departure_utc, ordered_qty, shipped_qty, freight_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", row["shipment_id"], ref["customer_id"], ref["product_id"], ref["facility_id"], ref["carrier_id"], (row.get("dock") or "D-01").strip(), planned - timedelta(hours=2), planned, qty, shipped, freight, status)
-                applied += 1
-            for error in errors:
-                conn.execute("INSERT dbo.import_errors(import_run_id, source_row_no, error_message, raw_json) VALUES (?, ?, ?, ?)", run_row["import_run_id"], error["line"], error["error"], json.dumps(error))
-            conn.execute("UPDATE dbo.import_runs SET completed_utc = SYSUTCDATETIME(), applied_count = ?, rejected_count = ?, status = 'Completed' WHERE import_run_id = ?", applied, len(errors), run_row["import_run_id"])
+            import_run_id = run_row["import_run_id"]
+            for row in staged:
+                conn.execute(
+                    """INSERT staging.shipment_updates(
+                        import_run_id, source_row_no, shipment_id, customer_name, product_name,
+                        facility_name, carrier_name, dock_code, planned_departure_utc,
+                        ordered_qty, shipped_qty, freight_cost, status, validation_error
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    import_run_id,
+                    *row,
+                )
+            conn.execute("EXEC dbo.usp_apply_shipment_import ?", import_run_id)
+            import_summary = self.repository.rows(conn.execute("SELECT applied_count, rejected_count FROM dbo.import_runs WHERE import_run_id = ?", import_run_id))[0]
+            errors = [
+                {"line": row["source_row_no"], "error": row["error_message"]}
+                for row in self.repository.rows(
+                    conn.execute("SELECT source_row_no, error_message FROM dbo.import_errors WHERE import_run_id = ? ORDER BY import_error_id", import_run_id)
+                )
+            ]
+            applied = int(import_summary["applied_count"])
+            run_id = f"IMP-{import_run_id:04d}"
             conn.execute("INSERT dbo.audit_events(actor, action_name, entity_type, entity_id, detail_json) VALUES (?, 'shipment.import', 'import_run', ?, ?)", actor.username, run_id, json.dumps({"applied": applied, "errors": len(errors)}))
             conn.commit()
         return {"run_id": run_id, "actor": actor.username, "applied": applied, "errors": errors, "occurred_utc": utc_now().isoformat()}

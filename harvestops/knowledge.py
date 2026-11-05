@@ -22,6 +22,12 @@ DOCUMENTS = (
     KnowledgeDocument("Shipment exception handling", "Repeated shipment imports are idempotent by external shipment reference. Invalid rows are rejected into the import error report and do not overwrite the accepted shipment record.", "knowledge/shipment-exceptions.md"),
 )
 
+KPI_DEFINITIONS = (
+    {"name": "fill_rate", "definition": "shipped quantity / ordered quantity"},
+    {"name": "on_time_rate", "definition": "on-time departures / closed shipments"},
+    {"name": "freight_cost", "definition": "sum of shipment freight cost in scope"},
+)
+
 
 class KnowledgeService:
     def __init__(self, api_key: str = "", model: str = "claude-3-5-haiku-latest"):
@@ -45,6 +51,11 @@ class KnowledgeService:
                     scored.append((score, document))
         scored.sort(key=lambda item: -item[0])
         return [document for _, document in scored[: max(1, min(limit, 3))]]
+
+    def approved_kpi_definitions(self, user: User | None, limit: int = 3) -> list[dict[str, str]]:
+        if not self._allowed(user, DOCUMENTS[0]):
+            return []
+        return [dict(item) for item in KPI_DEFINITIONS[: max(1, min(limit, len(KPI_DEFINITIONS)))]]
 
     def answer_with_claude(self, query: str, documents: list[KnowledgeDocument]) -> dict:
         if not self.api_key:

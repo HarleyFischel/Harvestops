@@ -123,8 +123,25 @@ class SqlServerRepository:
             params.append(filters["end_date"])
         customer = filters.get("customer")
         if customer and customer != "All":
-            clauses.append("EXISTS (SELECT 1 FROM dbo.shipments sx JOIN dbo.customers cx ON cx.customer_id = sx.customer_id WHERE sx.facility_id = pr.facility_id AND sx.product_id = pr.product_id AND cx.customer_name = ?)")
-            params.append(customer)
+            customer_scope = [
+                "sx.facility_id = pr.facility_id",
+                "sx.product_id = pr.product_id",
+                "cx.customer_name = ?",
+            ]
+            customer_params = [customer]
+            if filters.get("start_date"):
+                customer_scope.append("sx.planned_departure_utc >= CAST(? AS date)")
+                customer_params.append(filters["start_date"])
+            if filters.get("end_date"):
+                customer_scope.append("sx.planned_departure_utc < DATEADD(day, 1, CAST(? AS date))")
+                customer_params.append(filters["end_date"])
+            clauses.append(
+                "EXISTS (SELECT 1 FROM dbo.shipments sx "
+                "JOIN dbo.customers cx ON cx.customer_id = sx.customer_id WHERE "
+                + " AND ".join(customer_scope)
+                + ")"
+            )
+            params.extend(customer_params)
         rows = self.query(
             f"""SELECT COALESCE(SUM(pr.output_qty), 0) AS production_output,
                        COALESCE(SUM(pr.labor_hours), 0) AS labor_hours
