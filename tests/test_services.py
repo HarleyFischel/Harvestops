@@ -63,10 +63,12 @@ def test_purchase_reads_are_scoped_for_non_approvers():
     approver = store.users["demo.approver"]
     own = store.create_purchase(operator, "Salinas", [{"product": "Cartons", "quantity": 2, "unit_cost": "1.00"}])
     other = store.create_purchase(viewer, "Yuma", [{"product": "Pallet Wrap", "quantity": 3, "unit_cost": "4.00"}])
-    assert [request.request_id for request in store.list_purchases(operator)] == [own.request_id]
+    operator_visible = store.list_purchases(operator)
+    assert own.request_id in {request.request_id for request in operator_visible}
+    assert all(request.requester == operator.username for request in operator_visible)
     assert [request.request_id for request in store.list_purchases(viewer)] == [other.request_id]
-    assert {request.request_id for request in store.list_purchases(approver)} == {own.request_id, other.request_id}
-    assert all(event.entity_id == own.request_id for event in store.purchase_history(operator))
+    assert {own.request_id, other.request_id}.issubset({request.request_id for request in store.list_purchases(approver)})
+    assert all(event.entity_id in {request.request_id for request in operator_visible} for event in store.purchase_history(operator))
 
 
 def test_import_is_idempotent_and_reports_invalid_rows():

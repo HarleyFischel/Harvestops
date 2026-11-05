@@ -100,8 +100,8 @@ class SqlServerRepository:
                        COALESCE(SUM(ordered_qty), 0) AS ordered_qty,
                        COALESCE(SUM(shipped_qty), 0) AS shipped_qty,
                        COALESCE(SUM(freight_cost), 0) AS freight_cost,
-                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL THEN 1 ELSE 0 END), 0) AS closed_count,
-                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND actual_departure_utc <= planned_departure_utc THEN 1 ELSE 0 END), 0) AS on_time_count
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND status <> 'Cancelled' THEN 1 ELSE 0 END), 0) AS closed_count,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND status <> 'Cancelled' AND actual_departure_utc <= planned_departure_utc THEN 1 ELSE 0 END), 0) AS on_time_count
                 FROM dbo.v_shipment_board WHERE {where}""",
             params,
         )

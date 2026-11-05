@@ -32,9 +32,10 @@ class InMemoryStore:
         }
         self.shipments = self._seed_shipments()
         self.production_runs = self._seed_production_runs()
-        self.purchases: dict[str, PurchaseRequest] = {}
         self.audit: list[AuditEvent] = []
         self.import_runs: list[dict] = []
+        self.purchases: dict[str, PurchaseRequest] = {}
+        self._seed_purchases()
 
     @staticmethod
     def _seed_shipments() -> dict[str, Shipment]:
@@ -73,6 +74,35 @@ class InMemoryStore:
             for product_index, product in enumerate(products)
             for month in months
         ]
+
+    def _seed_purchases(self) -> None:
+        seeded_at = datetime(2026, 3, 3, 15, tzinfo=timezone.utc)
+        rejected = PurchaseRequest(
+            "PR-1001",
+            "demo.operator",
+            "Salinas",
+            "Rejected",
+            seeded_at,
+            "Synthetic seed: price exceeded budget",
+            [PurchaseLine("Romaine Hearts", Decimal("40"), Decimal("2.3500"))],
+            2,
+        )
+        pending = PurchaseRequest(
+            "PR-1002",
+            "demo.operator",
+            "Yuma",
+            "Pending",
+            seeded_at,
+            "",
+            [PurchaseLine("Baby Spinach", Decimal("80"), Decimal("1.8500"))],
+            2,
+        )
+        self.purchases.update({rejected.request_id: rejected, pending.request_id: pending})
+        self.audit.extend([
+            AuditEvent("seed-purchase-created", "demo.operator", "purchase.created", "purchase_request", rejected.request_id, {"total": str(rejected.total)}, seeded_at),
+            AuditEvent("seed-purchase-rejected", "demo.approver", "purchase.rejected", "purchase_request", rejected.request_id, {"comment": rejected.comment}, seeded_at),
+            AuditEvent("seed-purchase-pending", "demo.operator", "purchase.submitted", "purchase_request", pending.request_id, {}, seeded_at),
+        ])
 
     def list_shipments(self, filters: dict, page: int = 1, page_size: int = 25) -> tuple[list[Shipment], int]:
         rows = list(self.shipments.values())
@@ -114,7 +144,7 @@ class InMemoryStore:
         rows, _ = self.list_shipments(filters, 1, 10_000)
         total_ordered = sum((r.ordered_qty for r in rows), Decimal(0))
         total_shipped = sum((r.shipped_qty for r in rows), Decimal(0))
-        closed = [r for r in rows if r.actual_departure_utc]
+        closed = [r for r in rows if r.actual_departure_utc and r.status != "Cancelled"]
         on_time = sum(1 for r in closed if r.on_time)
         keys = {(row.facility, row.product) for row in rows}
         start_date = self._filter_date(filters.get("start_date"))

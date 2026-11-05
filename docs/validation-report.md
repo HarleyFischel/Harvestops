@@ -21,7 +21,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
-- SQL migrations 003 and 004 add the shipment-status and staged-import procedures/tables; procedure execution is pending the external SQL Server gate.
+- SQL migrations 003–006 add the shipment-status and staged-import procedures/tables, pending-purchase/knowledge seed records; procedure execution is pending the external SQL Server gate.
 - The deterministic local retrieval evaluation passed 4/4 exact-source checks; see `docs/retrieval-evaluation.md`.
 - Dashboard KPI scope now includes planned-departure date range and seeded production-run/labor records; the date-scope service test passed.
 - Entra identity claims are reconstructed from the server-side session for multi-worker requests; direct unauthenticated Dash requests and cross-user purchasing reads have negative coverage.
