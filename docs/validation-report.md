@@ -6,8 +6,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- `.venv312/bin/python -m pytest -q` passed: 34 tests, with 1 SQL integration test skipped because no connection string was supplied.
-- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 34 passed / 1 skipped result and a redacted configuration summary.
+- `.venv312/bin/python -m pytest -q` passed: 34 tests, with 2 SQL integration tests skipped because no connection string was supplied.
+- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 34 passed / 2 skipped result and a redacted configuration summary.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
