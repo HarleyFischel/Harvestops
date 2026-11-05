@@ -18,7 +18,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - The ARM64 `Dockerfile.dev` image built from `requirements-dev.lock` and its startup command passed `/healthz` and Dash HTTP smoke checks.
 - Local rollback exercise passed: the prior local ARM64 image and the current final ARM64 image each served `/healthz` 200 and root HTTP 200 on the same port in succession; temporary containers were removed.
 - MCP tool tests passed locally for lookup, KPI definitions, exception result limits, unknown-principal rejection, and exposed-mode RS256 authentication; no remote MCP deployment was claimed.
-- GitHub Actions YAML parsed locally; the CI workflow now contains an SQL Server service job gated by the repository's `SQLSERVER_TEST_PASSWORD` secret, and the release workflow performs federated ACR login, immutable digest update, and smoke check.
+- GitHub Actions YAML parsed locally; the CI workflow now contains an opt-in SQL Server service job gated by repository variable `SQLSERVER_INTEGRATION_ENABLED=true` plus the `SQLSERVER_TEST_PASSWORD` secret, and the release workflow performs federated ACR login, explicit AMD64 image publishing, immutable digest update, and smoke check.
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
