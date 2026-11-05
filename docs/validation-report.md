@@ -1,23 +1,26 @@
 # Validation report
 
-Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual environment. Disk: 170 GiB free at start. Docker CLI 29.8.0 is installed; Docker daemon was not reachable at start.
+Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual environment. Disk: approximately 170 GiB free at start. Docker CLI/server 29.8.0, Docker Desktop, and an ARM64 daemon were available after the initial inspection.
 
 ## Completed evidence
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- .venv312/bin/python -m pytest -q passed: 9 tests.
+- .venv312/bin/python -m pytest -q passed: 12 tests.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
 - Playwright Chromium was installed and the browser smoke test passed against the local server, confirming the dashboard heading and synthetic-data banner.
-- Both Compose files passed docker compose config validation.
+- `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
+- The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
+- SQL migration 003 adds `dbo.usp_change_shipment_status` with rowversion and transition checks; procedure execution is pending the external SQL Server gate.
 - Source includes separate ARM64 Mac app Compose, x86-64 SQL Server Compose, Codespaces setup, SQL migrations, production Dockerfile, GitHub Actions, Bicep, MCP, token exchange, benchmark, and legacy example.
 
 ## Pending or unverified
 
 - External SQL Server was not configured. Needed: reachable host/IP and port, database name, application login/password or Entra/managed identity plan, TLS certificate chain, and firewall/VPN access. The app will use SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT=true, and SQL_TRUST_SERVER_CERTIFICATE=false.
-- Docker Desktop was later available. Separate ARM64 and AMD64 builds completed successfully. Both images passed architecture metadata checks, required Python/MCP imports, ODBC Driver 18 checks, `/healthz`, and Dash HTTP smoke checks. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
+- Separate ARM64 and AMD64 builds completed successfully. `docker image inspect` reported `arm64 linux` and `amd64 linux`; both images passed required Python/MCP imports, ODBC Driver 18/module checks, `/healthz`, and Dash HTTP smoke checks in separate containers. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
+- Playwright browser smoke passed against the running local server, and a 390px mobile viewport check found both the dashboard heading and synthetic-data indicator.
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude, and remote MCP are configuration-only until credentials and authorization are supplied.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access.
 
@@ -30,3 +33,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
     docker build --platform linux/amd64 -t harvestops:amd64 .
     SQLSERVER_MIGRATION_CONNECTION='...' python db/run_migrations.py
     SQLSERVER_MIGRATION_CONNECTION='...' python scripts/benchmark_sql.py
+
+## Evidence not available in this environment
+
+No external SQL Server connection details were supplied. The remaining SQL gate needs the Proxmox host/IP and port, a database/login or Entra authentication plan, firewall/VPN reachability, and the TLS certificate chain. Azure deployment, ACR, Container Apps, Entra, Claude, and remote MCP remain configuration-only until credentials and authorization are supplied. No cloud resources were provisioned.

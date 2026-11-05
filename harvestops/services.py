@@ -68,6 +68,18 @@ class InMemoryStore:
         start = max(0, (page - 1) * page_size)
         return rows[start : start + page_size], total
 
+    def filter_options(self) -> dict[str, list[str]]:
+        return {field: sorted({getattr(row, field) for row in self.shipments.values()}) for field in ("customer", "product", "facility")}
+
+    def export_shipments(self) -> list[dict]:
+        return [{"shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "status": row.status, "freight_cost": row.freight_cost} for row in self.shipments.values()]
+
+    def list_purchases(self) -> list[PurchaseRequest]:
+        return list(self.purchases.values())
+
+    def purchase_history(self) -> list[AuditEvent]:
+        return [event for event in self.audit if event.entity_type == "purchase_request"]
+
     def kpis(self, filters: dict) -> dict:
         rows, _ = self.list_shipments(filters, 1, 10_000)
         total_ordered = sum((r.ordered_qty for r in rows), Decimal(0))

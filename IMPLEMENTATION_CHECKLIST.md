@@ -13,10 +13,12 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Purchasing request, submit, approve/reject, self-approval prevention, and history
 - [x] Demo authentication with server-side role checks
 - [x] Health/readiness endpoints and startup diagnostics
+- [x] SQL Server-backed service adapter selected by STORAGE_MODE=sqlserver
+- [x] Shipment CSV upload/API workflow with validation, idempotency, and CSRF token check
 
 ## Milestone 2 — data, security, and tests
 
-- [x] SQL Server/Azure SQL schema, migrations, seed, views, and stored procedures
+- [x] SQL Server/Azure SQL schema, migrations, seed, views, and workflow stored procedure
 - [x] pyodbc repository with parameterized SQL and UTC policy
 - [x] CSV validation/import with idempotency, staging semantics, and audit trail
 - [x] Knowledge search with permission filtering and optional Claude adapter boundary
@@ -37,10 +39,10 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 ## Verification gates
 
 - [ ] External SQL Server connection verified (blocked until connection details are provided)
-- [ ] Docker daemon and ARM64/AMD64 image builds verified (Docker daemon unavailable at kickoff)
+- [x] Docker daemon and ARM64/AMD64 image builds verified
 - [x] Python unit and service tests pass
 - [x] Demo-mode runtime smoke test passes
 - [x] Browser smoke test passes against the local demo server
 - [x] ARM64 and AMD64 application container health/Dash smoke tests
-- [~] Full x86 SQL Server Compose runtime and persistence exercise pending on the intended x86-64 host
+- [~] Full x86 SQL Server Compose runtime, migration, persistence, and backup/restore exercise pending on the intended x86-64 host
 - [~] Azure deployment validation is configuration-only until credentials are supplied

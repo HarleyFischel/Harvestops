@@ -26,3 +26,32 @@ def test_demo_identity_cannot_be_enabled_in_production():
         assert "DEMO_MODE" in str(exc)
     else:
         raise AssertionError("production demo mode must fail closed")
+
+
+def test_required_grid_and_purchase_callbacks_exist():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    callback_keys = set(app.callback_map)
+    assert any("shipment-grid.rowData" in key for key in callback_keys)
+    assert any("purchase-history.children" in key for key in callback_keys)
+
+
+def test_entra_routes_are_closed_in_demo_mode():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo", identity_mode="demo"))
+    client = app.server.test_client()
+    assert client.get("/auth/login").status_code == 403
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    assert client.post("/auth/logout").get_json()["status"] == "signed_out"
+
+
+def test_import_endpoint_is_authorized_and_idempotent():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    csv_text = "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status\nSHP-2099,City Market,Spring Mix,Salinas,GreenLine,D-07,2026-03-02T15:00:00Z,500,500,875,Scheduled\n"
+    assert client.post("/api/shipments/import", data=csv_text).status_code == 403
+    client.post("/auth/demo", json={"username": "demo.operator"})
+    token = client.get("/api/csrf").get_json()["csrf_token"]
+    first = client.post("/api/shipments/import", data=csv_text, headers={"X-CSRF-Token": token})
+    second = client.post("/api/shipments/import", data=csv_text, headers={"X-CSRF-Token": token})
+    assert first.status_code == 201
+    assert first.get_json()["applied"] == 1
+    assert second.get_json()["applied"] == 0
