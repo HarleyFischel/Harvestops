@@ -13,6 +13,14 @@ def test_dashboard_kpis_are_seeded_and_coherent():
     assert kpis["freight_cost"] == 13165
 
 
+def test_dashboard_date_scope_applies_to_shipments_and_production_metrics():
+    store = InMemoryStore()
+    kpis = store.kpis({"start_date": "2026-01-01", "end_date": "2026-01-31"})
+    assert kpis["shipment_volume"] == 4
+    assert kpis["production_output"] > 0
+    assert kpis["labor_productivity"] > 0
+
+
 def test_unauthorized_status_change_is_rejected():
     store = InMemoryStore()
     with pytest.raises(PermissionError):
@@ -47,6 +55,19 @@ def test_purchase_self_approval_and_valid_approval():
     assert decided.total == Decimal("23.50")
 
 
+def test_purchase_reads_are_scoped_for_non_approvers():
+    store = InMemoryStore()
+    operator = store.users["demo.operator"]
+    viewer = store.users["demo.viewer"]
+    approver = store.users["demo.approver"]
+    own = store.create_purchase(operator, "Salinas", [{"product": "Cartons", "quantity": 2, "unit_cost": "1.00"}])
+    other = store.create_purchase(viewer, "Yuma", [{"product": "Pallet Wrap", "quantity": 3, "unit_cost": "4.00"}])
+    assert [request.request_id for request in store.list_purchases(operator)] == [own.request_id]
+    assert [request.request_id for request in store.list_purchases(viewer)] == [other.request_id]
+    assert {request.request_id for request in store.list_purchases(approver)} == {own.request_id, other.request_id}
+    assert all(event.entity_id == own.request_id for event in store.purchase_history(operator))
+
+
 def test_import_is_idempotent_and_reports_invalid_rows():
     store = InMemoryStore()
     operator = store.users["demo.operator"]
@@ -60,6 +81,18 @@ def test_import_is_idempotent_and_reports_invalid_rows():
     assert first["applied"] == 1
     assert len(first["errors"]) == 1
     assert second["applied"] == 0
+
+
+def test_import_rejects_malformed_record_without_raising():
+    store = InMemoryStore()
+    operator = store.users["demo.operator"]
+    csv_text = (
+        "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status\n"
+        "SHP-2003,City Market,Spring Mix,Salinas,GreenLine,D-07,not-a-date,500,500,875,Unknown\n"
+    )
+    result = store.import_shipments(csv_text, operator)
+    assert result["applied"] == 0
+    assert result["errors"][0]["error"] == "invalid shipment record"
 
 
 def test_csv_formula_injection_is_prefixed():

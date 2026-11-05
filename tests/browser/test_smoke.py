@@ -16,4 +16,5 @@ def test_dashboard_renders():
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
         assert page.get_by_text("Operations dashboard").count() >= 1
         assert page.get_by_text("SYNTHETIC DATA").count() >= 1
+        assert page.get_by_text("Planned departure range").count() == 1
         browser.close()

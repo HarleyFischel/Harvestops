@@ -24,7 +24,17 @@ log = logging.getLogger("harvestops")
 
 def current_user(store: InMemoryStore):
     username = session.get("username")
-    return store.users.get(username) if username else None
+    if not username:
+        return None
+    known_user = store.users.get(username)
+    if known_user:
+        return known_user
+    # Reconstruct Entra principals from the server-side session so a request
+    # routed to another worker does not depend on process-local state.
+    roles = set(session.get("roles", []))
+    if "viewer" not in roles:
+        return None
+    return User(username, session.get("display_name", username), roles)
 
 
 def csrf_token() -> str:
@@ -89,7 +99,7 @@ def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
     return html.Div([
         html.Div([html.Div([html.Div("Operations dashboard", className="page-kicker"), html.H1("Move today’s harvest with confidence."), html.P("A single operational view of volume, service, fill, and labor signals.")]), html.Div("Last refreshed · synthetic seed", className="refresh-note")], className="page-heading"),
-        html.Div([html.Div([html.Label("Customer"), dcc.Dropdown(id="filter-customer", options=[{"label": "All customers", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Product"), dcc.Dropdown(id="filter-product", options=[{"label": "All products", "value": "All"}] + [{"label": x, "value": x} for x in options["product"]], value="All")], className="filter-control"), html.Div([html.Label("Facility"), dcc.Dropdown(id="filter-facility", options=[{"label": "All facilities", "value": "All"}] + [{"label": x, "value": x} for x in options["facility"]], value="All")], className="filter-control")], className="filter-row"),
+        html.Div([html.Div([html.Label("Planned departure range"), dcc.DatePickerRange(id="filter-dates", start_date="2026-01-01", end_date="2026-03-31", display_format="YYYY-MM-DD", minimum_nights=0)], className="filter-control date-filter"), html.Div([html.Label("Customer"), dcc.Dropdown(id="filter-customer", options=[{"label": "All customers", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Product"), dcc.Dropdown(id="filter-product", options=[{"label": "All products", "value": "All"}] + [{"label": x, "value": x} for x in options["product"]], value="All")], className="filter-control"), html.Div([html.Label("Facility"), dcc.Dropdown(id="filter-facility", options=[{"label": "All facilities", "value": "All"}] + [{"label": x, "value": x} for x in options["facility"]], value="All")], className="filter-control")], className="filter-row"),
         html.Div(id="kpi-row", className="metric-grid"),
         html.Div([dcc.Graph(id="volume-chart", config={"displayModeBar": False}), dcc.Graph(id="service-chart", config={"displayModeBar": False})], className="chart-grid"),
         html.Div([html.Div([html.Div("Shipment exceptions", className="section-title"), html.Div("Late departures or partial fills require an operator decision.", className="section-subtitle")], className="section-heading"), html.Div(id="exceptions-table")], className="panel"),
@@ -143,11 +153,27 @@ def make_app(settings: Settings | None = None):
         server.config.update(SESSION_TYPE="redis", SESSION_REDIS=Redis.from_url(settings.session_redis_url), SESSION_KEY_PREFIX="harvestops:")
         Session(server)
 
+    @server.before_request
+    def protect_dash_surface():
+        protected = request.path == "/" or request.path.startswith(("/_dash-", "/assets/"))
+        if not protected:
+            return None
+        if settings.demo_mode and settings.identity_mode == "demo" and not session.get("username"):
+            session["username"] = "demo.viewer"
+            session.permanent = True
+        if current_user(store):
+            return None
+        if request.path == "/":
+            return redirect("/auth/login")
+        return jsonify({"error": "authentication required"}), 401
+
     @server.after_request
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if settings.app_env == "production":
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
@@ -197,8 +223,15 @@ def make_app(settings: Settings | None = None):
         claims = EntraAuth(settings).redeem(request.args.to_dict())
         principal = claims.get("preferred_username") or claims.get("email") or claims.get("sub")
         role_map = {"HarvestOps.Operator": "operator", "HarvestOps.Approver": "approver", "HarvestOps.Admin": "admin"}
-        roles = {"viewer"} | {role_map[r] for r in claims.get("roles", []) if r in role_map}
-        store.users[principal] = User(principal, claims.get("name", principal), roles)
+        claim_roles = claims.get("roles", [])
+        if isinstance(claim_roles, str):
+            claim_roles = [claim_roles]
+        roles = {"viewer"} | {role_map[r] for r in claim_roles if r in role_map}
+        display_name = claims.get("name", principal)
+        session["roles"] = sorted(roles)
+        session["display_name"] = display_name
+        session["identity"] = "entra"
+        store.users[principal] = User(principal, display_name, roles)
         session["username"] = principal
         session.permanent = True
         return jsonify({"username": principal, "roles": sorted(roles), "identity": "entra"})
@@ -255,7 +288,10 @@ def make_app(settings: Settings | None = None):
 
     @app.callback(Output("user-label", "children"), Input("role-switch", "value"))
     def role_label(username):
-        return f"{store.users[username].display_name} · {', '.join(sorted(store.users[username].roles))}"
+        user = current_user(store)
+        if not user:
+            return ""
+        return f"{user.display_name} · {', '.join(sorted(user.roles))}"
 
     @app.callback(Output("active-user", "data"), Input("role-switch", "value"), State("csrf-token", "data"))
     def switch_user(username, token):
@@ -264,11 +300,11 @@ def make_app(settings: Settings | None = None):
             return username
         return no_update
 
-    @app.callback(Output("kpi-row", "children"), Output("volume-chart", "figure"), Output("service-chart", "figure"), Output("exceptions-table", "children"), Input("filter-customer", "value"), Input("filter-product", "value"), Input("filter-facility", "value"))
-    def refresh_dashboard(customer, product, facility):
-        filters = {"customer": customer, "product": product, "facility": facility}
+    @app.callback(Output("kpi-row", "children"), Output("volume-chart", "figure"), Output("service-chart", "figure"), Output("exceptions-table", "children"), Input("filter-dates", "start_date"), Input("filter-dates", "end_date"), Input("filter-customer", "value"), Input("filter-product", "value"), Input("filter-facility", "value"))
+    def refresh_dashboard(start_date, end_date, customer, product, facility):
+        filters = {"start_date": start_date, "end_date": end_date, "customer": customer, "product": product, "facility": facility}
         k = store.kpis(filters)
-        cards = [metric_card("Shipment volume", str(k["shipment_volume"]), " loads", "Seeded records in scope"), metric_card("On-time rate", f"{k['on_time_rate']:.1f}", "%", "Closed shipments only"), metric_card("Fill rate", f"{k['fill_rate']:.1f}", "%", "Shipped ÷ ordered"), metric_card("Freight cost", f"${k['freight_cost']:,.0f}", "", "Planned + actual loads"), metric_card("Production output", f"{k['production_output']:,}", " units", "Seeded output proxy"), metric_card("Labor productivity", f"{k['labor_productivity']:,.1f}", " units/load", "Output ÷ loads")]
+        cards = [metric_card("Shipment volume", str(k["shipment_volume"]), " loads", "Seeded records in scope"), metric_card("On-time rate", f"{k['on_time_rate']:.1f}", "%", "Closed shipments only"), metric_card("Fill rate", f"{k['fill_rate']:.1f}", "%", "Shipped ÷ ordered"), metric_card("Freight cost", f"${k['freight_cost']:,.0f}", "", "Shipment freight in scope"), metric_card("Production output", f"{k['production_output']:,}", " units", "Production runs in scope"), metric_card("Labor productivity", f"{k['labor_productivity']:,.1f}", " units/hour", "Output ÷ labor hours")]
         rows, _ = store.list_shipments(filters, 1, 100)
         volume = go.Figure(go.Bar(x=[r.shipment_id for r in rows], y=[float(r.shipped_qty) for r in rows], marker_color="#0f766e"))
         volume.update_layout(title="Shipped quantity by load", height=300, margin={"l": 30, "r": 20, "t": 55, "b": 30}, plot_bgcolor="white", paper_bgcolor="white")
@@ -328,8 +364,8 @@ def make_app(settings: Settings | None = None):
             else:
                 req = store.decide_purchase(req_id, user, decision, comment or "", int(version))
                 message = f"Recorded {req.status.lower()} decision for {req.request_id}."
-            cards = [html.Div([html.Div(r.request_id, className="purchase-id"), html.Div(f"{r.facility} · {r.requester}"), html.Div(f"${r.total:,.2f} · {r.status}", className="purchase-status")], className="purchase-card") for r in store.list_purchases()]
-            history = [html.Div(f"{event.occurred_utc.isoformat()} · {event.actor} · {event.action} · {event.entity_id}", className="section-subtitle") for event in store.purchase_history()]
+            cards = [html.Div([html.Div(r.request_id, className="purchase-id"), html.Div(f"{r.facility} · {r.requester}"), html.Div(f"${r.total:,.2f} · {r.status}", className="purchase-status")], className="purchase-card") for r in store.list_purchases(user)]
+            history = [html.Div(f"{event.occurred_utc.isoformat()} · {event.actor} · {event.action} · {event.entity_id}", className="section-subtitle") for event in store.purchase_history(user)]
             return message, cards, history
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not complete action: {exc}", no_update, no_update

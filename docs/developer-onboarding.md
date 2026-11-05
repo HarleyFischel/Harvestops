@@ -1,6 +1,6 @@
 # Developer onboarding
 
-1. Use Python 3.12, copy `.env.example` to `.env`, create a virtual environment, and run `pip install -e '.[dev]'`.
+1. Use Python 3.12, copy `.env.example` to `.env`, create a virtual environment, and run `pip install -e '.[dev]'`. Codespaces also installs the Docker-in-Docker feature; verify it with `docker version` before using Compose.
 2. Start the demo with `./scripts/start-demo.sh`; run `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh`.
 3. Use `demo.viewer`, `demo.operator`, `demo.approver`, and `demo.admin` only in development demo mode.
 4. For SQL work, use `compose.x86.yml` on an x86-64 host or configure the Mac app for an external SQL Server. Apply migrations explicitly.

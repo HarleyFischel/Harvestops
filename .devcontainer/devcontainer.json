@@ -1,6 +1,13 @@
 {
   "name": "HarvestOps Codespaces",
   "build": { "dockerfile": "../Dockerfile.dev", "context": ".." },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
+  },
   "forwardPorts": [8050],
   "portsAttributes": { "8050": { "label": "HarvestOps Dash", "visibility": "private", "onAutoForward": "openBrowser" } },
   "postCreateCommand": "python -m pip install --no-deps -e .",

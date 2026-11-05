@@ -16,7 +16,7 @@ class KnowledgeDocument:
 
 
 DOCUMENTS = (
-    KnowledgeDocument("KPI definitions", "Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments.", "knowledge/kpi-definitions.md"),
+    KnowledgeDocument("KPI definitions", "Shipment volume counts shipments in scope. Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments. Freight cost is the sum of shipment freight cost. Production output is the sum of production-run output, and labor productivity is output divided by labor hours.", "knowledge/kpi-definitions.md"),
     KnowledgeDocument("Dock exception playbook", "For a late departure, confirm appointment, carrier arrival, and quantity before changing status or escalating.", "knowledge/dock-operations.md", frozenset({"viewer", "operator", "admin"})),
     KnowledgeDocument("Purchase controls", "A requester cannot approve their own request. Approval decisions require the pending state and current version.", "knowledge/purchasing.md", frozenset({"approver", "admin"})),
     KnowledgeDocument("Shipment exception handling", "Repeated shipment imports are idempotent by external shipment reference. Invalid rows are rejected into the import error report and do not overwrite the accepted shipment record.", "knowledge/shipment-exceptions.md"),

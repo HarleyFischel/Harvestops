@@ -31,6 +31,7 @@ class InMemoryStore:
             "demo.admin": User("demo.admin", "Demo Admin", {"viewer", "operator", "approver", "admin"}),
         }
         self.shipments = self._seed_shipments()
+        self.production_runs = self._seed_production_runs()
         self.purchases: dict[str, PurchaseRequest] = {}
         self.audit: list[AuditEvent] = []
         self.import_runs: list[dict] = []
@@ -43,10 +44,10 @@ class InMemoryStore:
             ("SHP-1002", "Harvest Grocers", "Baby Spinach", "Yuma", "Westway", "D-04", 900, 780, 1440, "Exception", 3),
             ("SHP-1003", "City Market", "Spring Mix", "Salinas", "GreenLine", "D-02", 1500, 1500, 2100, "In Transit", 7),
             ("SHP-1004", "FreshMart Northeast", "Iceberg Lettuce", "Oxnard", "NorthStar", "D-03", 1100, 1100, 1750, "Scheduled", 10),
-            ("SHP-1005", "Harvest Grocers", "Romaine Hearts", "Salinas", "Westway", "D-05", 800, 800, 1290, "Delivered", 14),
-            ("SHP-1006", "City Market", "Baby Spinach", "Yuma", "NorthStar", "D-01", 1000, 920, 1605, "Exception", 17),
-            ("SHP-1007", "FreshMart Northeast", "Spring Mix", "Oxnard", "GreenLine", "D-02", 1300, 1300, 1980, "Delivered", 21),
-            ("SHP-1008", "Harvest Grocers", "Iceberg Lettuce", "Salinas", "Westway", "D-06", 700, 700, 1180, "Cancelled", 24),
+            ("SHP-1005", "Harvest Grocers", "Romaine Hearts", "Salinas", "Westway", "D-05", 800, 800, 1290, "Delivered", 35),
+            ("SHP-1006", "City Market", "Baby Spinach", "Yuma", "NorthStar", "D-01", 1000, 920, 1605, "Exception", 38),
+            ("SHP-1007", "FreshMart Northeast", "Spring Mix", "Oxnard", "GreenLine", "D-02", 1300, 1300, 1980, "Delivered", 42),
+            ("SHP-1008", "Harvest Grocers", "Iceberg Lettuce", "Salinas", "Westway", "D-06", 700, 700, 1180, "Cancelled", 56),
         ]
         result = {}
         for sid, customer, product, facility, carrier, dock, ordered, shipped, freight, status, days in rows:
@@ -54,6 +55,24 @@ class InMemoryStore:
             actual = None if status in {"Scheduled", "Cancelled"} else planned + timedelta(hours=2 if "1002" in sid or "1006" in sid else -1)
             result[sid] = Shipment(sid, customer, product, facility, carrier, dock, planned - timedelta(hours=2), planned, actual, Decimal(ordered), Decimal(shipped), Decimal(freight), status)
         return result
+
+    @staticmethod
+    def _seed_production_runs() -> list[dict]:
+        facilities = ("Salinas", "Yuma", "Oxnard")
+        products = ("Romaine Hearts", "Baby Spinach", "Spring Mix", "Iceberg Lettuce")
+        months = (1, 2, 3)
+        return [
+            {
+                "facility": facility,
+                "product": product,
+                "run_date": datetime(2026, month, 15, tzinfo=timezone.utc),
+                "output_qty": Decimal(1700 + facility_index * 90 + product_index * 35 + month * 20),
+                "labor_hours": Decimal("42.50") + Decimal(facility_index * 2),
+            }
+            for facility_index, facility in enumerate(facilities)
+            for product_index, product in enumerate(products)
+            for month in months
+        ]
 
     def list_shipments(self, filters: dict, page: int = 1, page_size: int = 25) -> tuple[list[Shipment], int]:
         rows = list(self.shipments.values())
@@ -63,6 +82,12 @@ class InMemoryStore:
                 rows = [r for r in rows if getattr(r, field) == value]
         if filters.get("exceptions_only"):
             rows = [r for r in rows if r.status == "Exception"]
+        start_date = self._filter_date(filters.get("start_date"))
+        end_date = self._filter_date(filters.get("end_date"))
+        if start_date:
+            rows = [r for r in rows if r.planned_departure_utc.date() >= start_date]
+        if end_date:
+            rows = [r for r in rows if r.planned_departure_utc.date() <= end_date]
         rows.sort(key=lambda x: x.planned_departure_utc)
         total = len(rows)
         start = max(0, (page - 1) * page_size)
@@ -74,11 +99,16 @@ class InMemoryStore:
     def export_shipments(self) -> list[dict]:
         return [{"shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "status": row.status, "freight_cost": row.freight_cost} for row in self.shipments.values()]
 
-    def list_purchases(self) -> list[PurchaseRequest]:
-        return list(self.purchases.values())
+    def list_purchases(self, actor: User | None) -> list[PurchaseRequest]:
+        if not actor:
+            return []
+        if actor.roles.intersection({"approver", "admin"}):
+            return list(self.purchases.values())
+        return [request for request in self.purchases.values() if request.requester == actor.username]
 
-    def purchase_history(self) -> list[AuditEvent]:
-        return [event for event in self.audit if event.entity_type == "purchase_request"]
+    def purchase_history(self, actor: User | None) -> list[AuditEvent]:
+        visible = {request.request_id for request in self.list_purchases(actor)}
+        return [event for event in self.audit if event.entity_type == "purchase_request" and event.entity_id in visible]
 
     def kpis(self, filters: dict) -> dict:
         rows, _ = self.list_shipments(filters, 1, 10_000)
@@ -86,14 +116,29 @@ class InMemoryStore:
         total_shipped = sum((r.shipped_qty for r in rows), Decimal(0))
         closed = [r for r in rows if r.actual_departure_utc]
         on_time = sum(1 for r in closed if r.on_time)
+        keys = {(row.facility, row.product) for row in rows}
+        start_date = self._filter_date(filters.get("start_date"))
+        end_date = self._filter_date(filters.get("end_date"))
+        production = [run for run in self.production_runs if (run["facility"], run["product"]) in keys and (not start_date or run["run_date"].date() >= start_date) and (not end_date or run["run_date"].date() <= end_date)]
+        production_output = sum((run["output_qty"] for run in production), Decimal(0))
+        labor_hours = sum((run["labor_hours"] for run in production), Decimal(0))
         return {
             "shipment_volume": len(rows),
             "on_time_rate": (on_time / len(closed) * 100) if closed else 0,
             "fill_rate": (float(total_shipped / total_ordered) * 100) if total_ordered else 0,
             "freight_cost": float(sum((r.freight_cost for r in rows), Decimal(0))),
-            "production_output": int(total_shipped * Decimal("1.12")),
-            "labor_productivity": round(float(total_shipped / max(len(rows), 1)), 1),
+            "production_output": int(production_output),
+            "labor_productivity": round(float(production_output / labor_hours), 1) if labor_hours else 0,
         }
+
+    @staticmethod
+    def _filter_date(value: str | None):
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value).date()
+        except ValueError as exc:
+            raise DomainError("Date filters must use YYYY-MM-DD") from exc
 
     def change_status(self, shipment_id: str, new_status: str, actor: User, expected_version: int) -> Shipment:
         if not actor:
@@ -187,13 +232,18 @@ class InMemoryStore:
             try:
                 qty = Decimal(row["ordered_qty"])
                 shipped = Decimal(row["shipped_qty"])
-                if qty <= 0 or shipped < 0 or shipped > qty:
+                planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
+                status = row.get("status", "Scheduled")
+                freight = Decimal(row.get("freight_cost", "0"))
+                required = tuple((row.get(field) or "").strip() for field in ("customer", "product", "facility", "carrier"))
+                if not all(required) or planned.tzinfo is None or qty <= 0 or shipped < 0 or shipped > qty or freight < 0 or status not in STATUSES:
                     raise ValueError
             except (KeyError, InvalidOperation, ValueError):
-                errors.append({"line": line_no, "error": "invalid quantities"})
+                errors.append({"line": line_no, "error": "invalid shipment record"})
                 continue
-            planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
-            self.shipments[sid] = Shipment(sid, row["customer"], row["product"], row["facility"], row["carrier"], row.get("dock", "D-01"), planned - timedelta(hours=2), planned, None, qty, shipped, Decimal(row.get("freight_cost", "0")), row.get("status", "Scheduled"))
+            planned = planned.astimezone(timezone.utc)
+            dock = (row.get("dock") or "D-01").strip()
+            self.shipments[sid] = Shipment(sid, required[0], required[1], required[2], required[3], dock, planned - timedelta(hours=2), planned, None, qty, shipped, freight, status)
             applied += 1
         run = {"run_id": f"IMP-{len(self.import_runs)+1:04}", "actor": actor.username, "applied": applied, "errors": errors, "occurred_utc": utc_now().isoformat()}
         self.import_runs.append(run)

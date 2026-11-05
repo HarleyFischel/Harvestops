@@ -18,7 +18,7 @@ Open http://127.0.0.1:8050. Demo accounts are demo.viewer, demo.operator, demo.a
 
 ## Codespaces
 
-Open the repository in GitHub Codespaces. The devcontainer installs dependencies, forwards private port 8050, and runs the demo. Use ./scripts/test.sh for tests. Stop/restart the process with Ctrl-C and ./scripts/start-demo.sh; rebuild the container from the Codespaces command palette. Deleting the Codespace removes its local filesystem; deleting the Docker volume in a database environment destroys the SQL Server data unless restored from backup.
+Open the repository in GitHub Codespaces. The devcontainer installs dependencies, enables Docker through the Docker-in-Docker feature, forwards private port 8050, and runs the demo. Verify Docker with `docker version`; use `./scripts/test.sh` for tests. Stop/restart the process with Ctrl-C and `./scripts/start-demo.sh`; rebuild the container from the Codespaces command palette. Deleting the Codespace removes its local filesystem; deleting the Docker volume in a database environment destroys the SQL Server data unless restored from backup.
 
 ## Containers and database modes
 
@@ -36,7 +36,7 @@ The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sql
 
 ## What is implemented
 
-- Operations dashboard: filters, KPI cards, linked Plotly charts, and exception table.
+- Operations dashboard: date-range/customer/product/facility filters, KPI cards, linked Plotly charts, and exception table.
 - Shipment board: service filtering/paging, allowed status transitions, optimistic version checks, role-protected CSV export, and audit events.
 - Purchasing: decimal totals, submit/approve/reject workflow, self-approval prevention, concurrency checks, and audit events.
 - Knowledge assistant: permission-safe local search with citations; optional provider boundary is documented.

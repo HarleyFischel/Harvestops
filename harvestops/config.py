@@ -29,6 +29,8 @@ class Settings(BaseSettings):
 
     def validate_for_runtime(self) -> list[str]:
         errors: list[str] = []
+        if self.app_env == "production" and (self.secret_key == "local-only-change-me" or len(self.secret_key) < 32):
+            errors.append("SECRET_KEY must be a generated value of at least 32 characters in production")
         if self.app_env == "production" and self.demo_mode:
             errors.append("DEMO_MODE must be false in production")
         if self.app_env == "production" and self.identity_mode != "entra":

@@ -52,45 +52,86 @@ class SqlServerRepository:
         return self.query(query, (customer, customer, offset, page_size))
 
     def shipment_count(self, filters: dict) -> int:
-        clauses = ["1=1"]
-        params: list = []
-        shipment_id = filters.get("shipment_id")
-        if shipment_id:
-            clauses.append("shipment_id = ?")
-            params.append(shipment_id)
-        for column, key in (("customer_name", "customer"), ("product_name", "product"), ("facility_name", "facility")):
-            value = filters.get(key)
-            if value and value != "All":
-                clauses.append(f"{column} = ?")
-                params.append(value)
-        if filters.get("exceptions_only"):
-            clauses.append("status = ?")
-            params.append("Exception")
-        rows = self.query(f"SELECT COUNT_BIG(*) AS total FROM dbo.v_shipment_board WHERE {' AND '.join(clauses)}", params)
+        where, params = self._shipment_filter(filters)
+        rows = self.query(f"SELECT COUNT_BIG(*) AS total FROM dbo.v_shipment_board WHERE {where}", params)
         return int(rows[0]["total"])
 
     def shipment_rows(self, filters: dict, page: int, page_size: int) -> list[dict]:
-        clauses = ["1=1"]
-        params: list = []
-        shipment_id = filters.get("shipment_id")
-        if shipment_id:
-            clauses.append("shipment_id = ?")
-            params.append(shipment_id)
-        for column, key in (("customer_name", "customer"), ("product_name", "product"), ("facility_name", "facility")):
-            value = filters.get(key)
-            if value and value != "All":
-                clauses.append(f"{column} = ?")
-                params.append(value)
-        if filters.get("exceptions_only"):
-            clauses.append("status = ?")
-            params.append("Exception")
+        where, params = self._shipment_filter(filters)
         offset = max(0, page - 1) * page_size
         params.extend([offset, page_size])
         return self.query(
             f"""SELECT shipment_id, customer_name, product_name, facility_name, carrier_name,
                        dock_code, appointment_utc, planned_departure_utc, actual_departure_utc,
                        ordered_qty, shipped_qty, freight_cost, status, row_version
-                FROM dbo.v_shipment_board WHERE {' AND '.join(clauses)}
+                FROM dbo.v_shipment_board WHERE {where}
                 ORDER BY planned_departure_utc, shipment_id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY""",
             params,
         )
+
+    @staticmethod
+    def _shipment_filter(filters: dict) -> tuple[str, list]:
+        clauses = ["1=1"]
+        params: list = []
+        shipment_id = filters.get("shipment_id")
+        if shipment_id:
+            clauses.append("shipment_id = ?")
+            params.append(shipment_id)
+        for column, key in (("customer_name", "customer"), ("product_name", "product"), ("facility_name", "facility")):
+            value = filters.get(key)
+            if value and value != "All":
+                clauses.append(f"{column} = ?")
+                params.append(value)
+        if filters.get("start_date"):
+            clauses.append("planned_departure_utc >= CAST(? AS date)")
+            params.append(filters["start_date"])
+        if filters.get("end_date"):
+            clauses.append("planned_departure_utc < DATEADD(day, 1, CAST(? AS date))")
+            params.append(filters["end_date"])
+        if filters.get("exceptions_only"):
+            clauses.append("status = ?")
+            params.append("Exception")
+        return " AND ".join(clauses), params
+
+    def shipment_kpis(self, filters: dict) -> dict:
+        where, params = self._shipment_filter(filters)
+        rows = self.query(
+            f"""SELECT COUNT_BIG(*) AS shipment_volume,
+                       COALESCE(SUM(ordered_qty), 0) AS ordered_qty,
+                       COALESCE(SUM(shipped_qty), 0) AS shipped_qty,
+                       COALESCE(SUM(freight_cost), 0) AS freight_cost,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL THEN 1 ELSE 0 END), 0) AS closed_count,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND actual_departure_utc <= planned_departure_utc THEN 1 ELSE 0 END), 0) AS on_time_count
+                FROM dbo.v_shipment_board WHERE {where}""",
+            params,
+        )
+        return rows[0]
+
+    def production_kpis(self, filters: dict) -> dict:
+        clauses = ["1=1"]
+        params: list = []
+        for column, key in (("f.facility_name", "facility"), ("p.product_name", "product")):
+            value = filters.get(key)
+            if value and value != "All":
+                clauses.append(f"{column} = ?")
+                params.append(value)
+        if filters.get("start_date"):
+            clauses.append("pr.run_date >= CAST(? AS date)")
+            params.append(filters["start_date"])
+        if filters.get("end_date"):
+            clauses.append("pr.run_date <= CAST(? AS date)")
+            params.append(filters["end_date"])
+        customer = filters.get("customer")
+        if customer and customer != "All":
+            clauses.append("EXISTS (SELECT 1 FROM dbo.shipments sx JOIN dbo.customers cx ON cx.customer_id = sx.customer_id WHERE sx.facility_id = pr.facility_id AND sx.product_id = pr.product_id AND cx.customer_name = ?)")
+            params.append(customer)
+        rows = self.query(
+            f"""SELECT COALESCE(SUM(pr.output_qty), 0) AS production_output,
+                       COALESCE(SUM(pr.labor_hours), 0) AS labor_hours
+                FROM dbo.production_runs pr
+                JOIN dbo.facilities f ON f.facility_id = pr.facility_id
+                JOIN dbo.products p ON p.product_id = pr.product_id
+                WHERE {' AND '.join(clauses)}""",
+            params,
+        )
+        return rows[0]

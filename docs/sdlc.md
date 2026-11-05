@@ -12,7 +12,9 @@ Code reviewed, lint/tests pass, security impact assessed, database migration rev
 
 Use short-lived feature branches, small coherent commits, and PR review. Require checks for lint, unit/integration tests, image build, dependency/security scanning, and migration validation. Production promotion must be manual and environment-protected where the GitHub plan supports it; YAML alone cannot create unavailable protection rules.
 
-The SQL integration job requires the repository secret `SQLSERVER_TEST_PASSWORD`; it is an ephemeral CI credential for the Developer-edition service container, not a production secret. If the repository secret is absent, that job must be treated as not configured rather than as a passing SQL verification.
+The SQL integration job is opt-in with the repository variable `SQLSERVER_INTEGRATION_ENABLED=true` and requires the repository secret `SQLSERVER_TEST_PASSWORD`; it is an ephemeral CI credential for the Developer-edition service container, not a production secret. If the variable is not enabled, the job is skipped and must be treated as not configured rather than as a passing SQL verification.
+
+The CI workflow runs `pip-audit --strict` and a Gitleaks secret scan. A failing audit blocks the check; local validation of the workflow does not claim that GitHub executed either hosted scan.
 
 ## Release checklist
 

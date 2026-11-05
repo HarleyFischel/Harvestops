@@ -45,11 +45,21 @@ class SqlServerStore:
         return rows
 
     def kpis(self, filters: dict) -> dict:
-        rows, _ = self.list_shipments(filters, 1, 100000)
-        total_ordered = sum((r.ordered_qty for r in rows), Decimal(0))
-        total_shipped = sum((r.shipped_qty for r in rows), Decimal(0))
-        closed = [r for r in rows if r.actual_departure_utc]
-        return {"shipment_volume": len(rows), "on_time_rate": (sum(1 for r in closed if r.on_time) / len(closed) * 100) if closed else 0, "fill_rate": (float(total_shipped / total_ordered) * 100) if total_ordered else 0, "freight_cost": float(sum((r.freight_cost for r in rows), Decimal(0))), "production_output": int(total_shipped * Decimal("1.12")), "labor_productivity": round(float(total_shipped / max(len(rows), 1)), 1)}
+        shipment = self.repository.shipment_kpis(filters)
+        production = self.repository.production_kpis(filters)
+        total_ordered = Decimal(str(shipment["ordered_qty"]))
+        total_shipped = Decimal(str(shipment["shipped_qty"]))
+        closed = int(shipment["closed_count"])
+        production_output = Decimal(str(production["production_output"]))
+        labor_hours = Decimal(str(production["labor_hours"]))
+        return {
+            "shipment_volume": int(shipment["shipment_volume"]),
+            "on_time_rate": (int(shipment["on_time_count"]) / closed * 100) if closed else 0,
+            "fill_rate": (float(total_shipped / total_ordered) * 100) if total_ordered else 0,
+            "freight_cost": float(Decimal(str(shipment["freight_cost"]))),
+            "production_output": int(production_output),
+            "labor_productivity": round(float(production_output / labor_hours), 1) if labor_hours else 0,
+        }
 
     def change_status(self, shipment_id: str, new_status: str, actor: User, expected_version: int) -> Shipment:
         if not actor:
@@ -89,12 +99,25 @@ class SqlServerStore:
         lines = [PurchaseLine(row["product_name"], Decimal(row["quantity"]), Decimal(row["unit_cost"])) for row in rows if row["product_name"]]
         return PurchaseRequest(first["request_id"], first["requester"], first["facility_name"], first["status"], first["created_utc"].replace(tzinfo=timezone.utc), first["comment"], lines, first["version_no"])
 
-    def list_purchases(self) -> list[PurchaseRequest]:
-        ids = self.repository.query("SELECT request_id FROM dbo.purchase_requests ORDER BY created_utc DESC")
+    def list_purchases(self, actor: User | None) -> list[PurchaseRequest]:
+        if not actor:
+            return []
+        if actor.roles.intersection({"approver", "admin"}):
+            ids = self.repository.query("SELECT request_id FROM dbo.purchase_requests ORDER BY created_utc DESC")
+        else:
+            ids = self.repository.query("SELECT request_id FROM dbo.purchase_requests WHERE requester = ? ORDER BY created_utc DESC", (actor.username,))
         return [self._purchase(row["request_id"]) for row in ids]
 
-    def purchase_history(self) -> list[AuditEvent]:
-        rows = self.repository.query("SELECT CONVERT(varchar(32), audit_event_id) AS event_id, actor, action_name, entity_type, entity_id, detail_json, occurred_utc FROM dbo.audit_events WHERE entity_type = 'purchase_request' ORDER BY occurred_utc")
+    def purchase_history(self, actor: User | None) -> list[AuditEvent]:
+        if not actor:
+            return []
+        query = "SELECT CONVERT(varchar(32), a.audit_event_id) AS event_id, a.actor, a.action_name, a.entity_type, a.entity_id, a.detail_json, a.occurred_utc FROM dbo.audit_events a JOIN dbo.purchase_requests r ON r.request_id = a.entity_id WHERE a.entity_type = 'purchase_request'"
+        params = ()
+        if not actor.roles.intersection({"approver", "admin"}):
+            query += " AND r.requester = ?"
+            params = (actor.username,)
+        query += " ORDER BY a.occurred_utc"
+        rows = self.repository.query(query, params)
         return [AuditEvent(row["event_id"], row["actor"], row["action_name"], row["entity_type"], row["entity_id"], {"raw": row["detail_json"]}, row["occurred_utc"].replace(tzinfo=timezone.utc)) for row in rows]
 
     def create_purchase(self, requester: User, facility: str, lines: list[dict]) -> PurchaseRequest:
@@ -169,13 +192,15 @@ class SqlServerStore:
                 qty, shipped = Decimal(row["ordered_qty"]), Decimal(row["shipped_qty"])
                 planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
                 status = row.get("status", "Scheduled")
+                freight = Decimal(row.get("freight_cost", "0"))
+                references = {field: (row.get(field) or "").strip() for field in ("customer", "product", "facility", "carrier")}
                 if not shipment_id or shipment_id in seen:
                     errors.append({"line": line_no, "error": "missing or duplicate shipment_id"})
                     continue
-                if qty <= 0 or shipped < 0 or shipped > qty or status not in STATUSES:
+                if not all(references.values()) or planned.tzinfo is None or qty <= 0 or shipped < 0 or shipped > qty or freight < 0 or status not in STATUSES:
                     raise ValueError
                 seen.add(shipment_id)
-                valid.append((line_no, row, qty, shipped, planned, status))
+                valid.append((line_no, row, qty, shipped, planned.astimezone(timezone.utc), freight, status, references))
             except (KeyError, InvalidOperation, ValueError):
                 errors.append({"line": line_no, "error": "invalid shipment record"})
         run_id = "SQL-" + secrets.token_hex(5).upper()
@@ -183,16 +208,16 @@ class SqlServerStore:
         with self.repository.connect() as conn:
             run_row = self.repository.rows(conn.execute("INSERT dbo.import_runs(source_name, status) OUTPUT INSERTED.import_run_id VALUES ('shipment-update.csv', 'Started')"))[0]
             run_id = f"IMP-{run_row['import_run_id']:04d}"
-            for line_no, row, qty, shipped, planned, status in valid:
+            for line_no, row, qty, shipped, planned, freight, status, references in valid:
                 exists = self.repository.rows(conn.execute("SELECT 1 AS found FROM dbo.shipments WHERE shipment_id = ?", row["shipment_id"]))
                 if exists:
                     continue
-                refs = self.repository.rows(conn.execute("""SELECT c.customer_id, p.product_id, f.facility_id, ca.carrier_id FROM dbo.customers c CROSS JOIN dbo.products p CROSS JOIN dbo.facilities f CROSS JOIN dbo.carriers ca WHERE c.customer_name=? AND p.product_name=? AND f.facility_name=? AND ca.carrier_name=?""", row["customer"], row["product"], row["facility"], row["carrier"]))
+                refs = self.repository.rows(conn.execute("""SELECT c.customer_id, p.product_id, f.facility_id, ca.carrier_id FROM dbo.customers c CROSS JOIN dbo.products p CROSS JOIN dbo.facilities f CROSS JOIN dbo.carriers ca WHERE c.customer_name=? AND p.product_name=? AND f.facility_name=? AND ca.carrier_name=?""", references["customer"], references["product"], references["facility"], references["carrier"]))
                 if not refs:
                     errors.append({"line": line_no, "error": "unknown customer, product, facility, or carrier"})
                     continue
                 ref = refs[0]
-                conn.execute("""INSERT dbo.shipments(shipment_id, customer_id, product_id, facility_id, carrier_id, dock_code, appointment_utc, planned_departure_utc, ordered_qty, shipped_qty, freight_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", row["shipment_id"], ref["customer_id"], ref["product_id"], ref["facility_id"], ref["carrier_id"], row.get("dock", "D-01"), planned - timedelta(hours=2), planned, qty, shipped, Decimal(row.get("freight_cost", "0")), status)
+                conn.execute("""INSERT dbo.shipments(shipment_id, customer_id, product_id, facility_id, carrier_id, dock_code, appointment_utc, planned_departure_utc, ordered_qty, shipped_qty, freight_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", row["shipment_id"], ref["customer_id"], ref["product_id"], ref["facility_id"], ref["carrier_id"], (row.get("dock") or "D-01").strip(), planned - timedelta(hours=2), planned, qty, shipped, freight, status)
                 applied += 1
             for error in errors:
                 conn.execute("INSERT dbo.import_errors(import_run_id, source_row_no, error_message, raw_json) VALUES (?, ?, ?, ?)", run_row["import_run_id"], error["line"], error["error"], json.dumps(error))
