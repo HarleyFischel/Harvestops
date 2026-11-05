@@ -14,7 +14,7 @@ Use short-lived feature branches, small coherent commits, and PR review. Require
 
 The SQL integration job is opt-in with the repository variable `SQLSERVER_INTEGRATION_ENABLED=true` and requires the repository secret `SQLSERVER_TEST_PASSWORD`; it is an ephemeral CI credential for the Developer-edition service container, not a production secret. If the variable is not enabled, the job is skipped and must be treated as not configured rather than as a passing SQL verification.
 
-The CI workflow runs `pip-audit --strict` and a Gitleaks secret scan. A failing audit blocks the check; local validation of the workflow does not claim that GitHub executed either hosted scan.
+The CI workflow runs `pip-audit --strict`, a Gitleaks secret scan, and a blocking Trivy scan of the built AMD64 application image for high/critical OS and library vulnerabilities. A failing audit blocks the check; local validation of the workflow does not claim that GitHub executed the hosted scans.
 
 ## Release checklist
 
