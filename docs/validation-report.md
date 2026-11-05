@@ -6,8 +6,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- `.venv312/bin/python -m pytest -q` passed: 32 tests, with 1 SQL integration test skipped because no connection string was supplied.
-- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 32 passed / 1 skipped result and a redacted configuration summary.
+- `.venv312/bin/python -m pytest -q` passed: 33 tests, with 1 SQL integration test skipped because no connection string was supplied.
+- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 33 passed / 1 skipped result and a redacted configuration summary.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
@@ -31,7 +31,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 ## Pending or unverified
 
 - External SQL Server was not configured. The local `.env` still contains the example endpoint `host.example.internal,1433`; a connection attempt was not claimed as successful. Needed: reachable host/IP and port, database name, application login/password or Entra/managed identity plan, TLS certificate chain, and firewall/VPN access. The app will use SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT=true, and SQL_TRUST_SERVER_CERTIFICATE=false. The host Python environment also lacks the unixODBC runtime; the application images include ODBC Driver 18 and unixODBC.
-- Separate ARM64 and AMD64 builds completed successfully. The latest images were `harvestops:arm64-final3` (manifest `fb3fea2b5a85414694ae04143a3cbcde05e4b33d235b383ae480ddb18be2b44e`) and `harvestops:amd64-final3` (manifest `3059b82b7756d685b57d3608d9dbbec393d7ab88123054d9cd217667b16e8eca`); `docker image inspect` reported `arm64 linux` and `amd64 linux`, both ran as `appuser`, and both passed required Python/MCP/pyodbc imports, ODBC Driver 18/module checks, `/healthz`, and Dash HTTP smoke checks in separate containers. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
+- Separate ARM64 and AMD64 builds completed successfully. The latest final image evidence is recorded below after the current source commit. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
 - Playwright browser smoke passed 4 tests against the running local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status plus purchase approval workflow, and a 390px mobile viewport rendering check.
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude provider calls, and remote MCP are configuration-only until credentials and authorization are supplied. The local Claude adapter and MCP tool code are implemented and unit/runtime import checked; remote calls were not claimed.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access. The new migration 005 validation procedure is implemented but not executed against SQL Server.

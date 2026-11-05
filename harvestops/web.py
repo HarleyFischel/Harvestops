@@ -15,10 +15,11 @@ from .auth import EntraAuth
 from .config import Settings, get_settings
 from .domain import User
 from .knowledge import KnowledgeService
+from .logging_config import configure_logging
 from .services import DomainError, InMemoryStore
 from .sql_store import SqlServerStore
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+configure_logging()
 log = logging.getLogger("harvestops")
 
 

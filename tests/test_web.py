@@ -1,4 +1,8 @@
+import json
+import logging
+
 from harvestops.config import Settings
+from harvestops.logging_config import JsonFormatter
 from harvestops.web import make_app
 
 
@@ -10,6 +14,14 @@ def test_health_and_readiness():
     headers = client.get("/healthz").headers
     assert headers["X-Content-Type-Options"] == "nosniff"
     assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
+
+
+def test_structured_log_formatter_emits_safe_json():
+    record = logging.LogRecord("harvestops.test", logging.INFO, __file__, 1, "workflow %s", ("ok",), None)
+    payload = json.loads(JsonFormatter().format(record))
+    assert payload["logger"] == "harvestops.test"
+    assert payload["message"] == "workflow ok"
+    assert payload["timestamp"].endswith("+00:00")
 
 
 def test_export_requires_operator_role():
