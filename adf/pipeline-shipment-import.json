@@ -1,0 +1,10 @@
+{
+  "name": "HarvestOpsShipmentImport",
+  "properties": {
+    "annotations": ["UNVERIFIED TEMPLATE - deploy and test before use"],
+    "activities": [
+      { "name": "CopyToStaging", "type": "Copy", "typeProperties": { "source": { "type": "DelimitedTextSource" }, "sink": { "type": "AzureSqlSink", "preCopyScript": "CREATE TABLE staging.shipment_updates (...)" } } },
+      { "name": "ValidateAndApply", "type": "SqlServerStoredProcedure", "typeProperties": { "storedProcedureName": "dbo.usp_apply_shipment_import" } }
+    ]
+  }
+}

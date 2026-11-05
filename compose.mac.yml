@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/arm64]
+    platform: linux/arm64
+    env_file: .env
+    environment:
+      STORAGE_MODE: sqlserver
+      DEMO_MODE: "true"
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8050/healthz')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+# SQL Server is intentionally external on this Mac. Set SQL_SERVER to the x86-64
+# Linux/Proxmox host or use Azure SQL. No SQL Server emulation runs here.

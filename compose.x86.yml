@@ -1,0 +1,38 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", " /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $${MSSQL_SA_PASSWORD} -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/amd64]
+    platform: linux/amd64
+    env_file: .env
+    environment:
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_USER: sa
+      SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    ports:
+      - "8050:8050"
+    restart: unless-stopped
+volumes:
+  sqlserver-data:
