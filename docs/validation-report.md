@@ -24,7 +24,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
 - SQL shipment imports now stage parsed rows in `staging.shipment_updates` and execute the versioned validation/apply procedure before reporting applied and rejected rows; this implementation path is not live-connection verified.
 - Production configuration now fails closed unless storage is SQL Server, SQL encryption is enabled, and `TrustServerCertificate` is disabled; structured log formatting redacts common secret-shaped key/value messages.
-- SQL migrations 003–006 add the shipment-status and staged-import procedures/tables, pending-purchase/knowledge seed records; procedure execution is pending the external SQL Server gate.
+- SQL migrations 003–007 add the shipment-status and staged-import procedures/tables, pending-purchase/knowledge seed records, and SQL/demo seed-departure alignment; procedure execution is pending the external SQL Server gate.
 - The deterministic local retrieval evaluation passed 4/4 exact-source checks; see `docs/retrieval-evaluation.md`.
 - Dashboard KPI scope now includes planned-departure date range and seeded production-run/labor records; the date-scope service test passed.
 - Entra identity claims are reconstructed from the server-side session for multi-worker requests; direct unauthenticated Dash requests and cross-user purchasing reads have negative coverage.
