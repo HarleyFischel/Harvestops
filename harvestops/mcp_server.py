@@ -1,13 +1,40 @@
 """Read-only MCP example using the official MCP Python SDK."""
+import os
+
+import jwt
 from mcp.server.fastmcp import FastMCP
 
+from .domain import User
 from .services import InMemoryStore
 
 mcp = FastMCP("HarvestOps read-only operations")
 store = InMemoryStore()
 
 
-def _require_principal(principal: str):
+def _require_principal(principal: str, auth_token: str = ""):
+    public_key = os.getenv("MCP_AUTH_PUBLIC_KEY", "")
+    exposed = os.getenv("MCP_EXPOSED", "false").lower() == "true" or bool(public_key)
+    if exposed:
+        issuer = os.getenv("MCP_AUTH_ISSUER", "")
+        audience = os.getenv("MCP_AUTH_AUDIENCE", "")
+        if not public_key or not issuer or not audience or not auth_token:
+            raise PermissionError("verified MCP authentication is required")
+        try:
+            header = jwt.get_unverified_header(auth_token)
+            if header.get("alg") != "RS256":
+                raise PermissionError("MCP token algorithm rejected")
+            claims = jwt.decode(auth_token, public_key, algorithms=["RS256"], issuer=issuer, audience=audience, options={"require": ["exp", "nbf", "iat", "iss", "aud", "sub"]})
+        except (jwt.PyJWTError, ValueError) as exc:
+            raise PermissionError("verified MCP authentication is required") from exc
+        if claims.get("sub") != principal:
+            raise PermissionError("MCP principal mismatch")
+        claim_roles = claims.get("roles", [])
+        if isinstance(claim_roles, str):
+            claim_roles = [claim_roles]
+        roles = {role.removeprefix("HarvestOps.").lower() for role in claim_roles}
+        if not roles.intersection({"viewer", "operator", "approver", "admin"}):
+            raise PermissionError("MCP principal has no permitted role")
+        return User(principal, claims.get("name", principal), roles)
     user = store.users.get(principal)
     if not user:
         raise PermissionError("authenticated principal required")
@@ -15,8 +42,8 @@ def _require_principal(principal: str):
 
 
 @mcp.tool()
-def lookup_shipment(shipment_id: str, principal: str) -> dict:
-    _require_principal(principal)
+def lookup_shipment(shipment_id: str, principal: str, auth_token: str = "") -> dict:
+    _require_principal(principal, auth_token)
     row = store.shipments.get(shipment_id)
     if not row:
         return {"found": False}
@@ -24,15 +51,15 @@ def lookup_shipment(shipment_id: str, principal: str) -> dict:
 
 
 @mcp.tool()
-def list_shipment_exceptions(principal: str, limit: int = 20) -> list[dict]:
-    _require_principal(principal)
+def list_shipment_exceptions(principal: str, limit: int = 20, auth_token: str = "") -> list[dict]:
+    _require_principal(principal, auth_token)
     limit = max(1, min(limit, 20))
     return [{"shipment_id": row.shipment_id, "status": row.status, "customer": row.customer, "fill_rate": round(row.fill_rate, 4)} for row in store.shipments.values() if row.status == "Exception"][:limit]
 
 
 @mcp.tool()
-def approved_kpi_definitions(principal: str) -> list[dict]:
-    _require_principal(principal)
+def approved_kpi_definitions(principal: str, auth_token: str = "") -> list[dict]:
+    _require_principal(principal, auth_token)
     return [{"name": "fill_rate", "definition": "shipped quantity / ordered quantity"}, {"name": "on_time_rate", "definition": "on-time departures / closed shipments"}]
 
 

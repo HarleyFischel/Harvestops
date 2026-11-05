@@ -50,3 +50,5 @@ AG Grid Community is the only required grid feature. Enterprise features are not
 See docs/validation-report.md for actual evidence and unverified gates.
 
 Leadership and delivery references: [project charter](docs/project-charter.md), [developer onboarding](docs/developer-onboarding.md), [UAT checklist](docs/uat-checklist.md), [skills evidence](docs/skills-evidence.md), and [release checklist](docs/change-management.md).
+
+Integration references: [identity modes](docs/identity.md), [knowledge assistant](docs/knowledge-assistant.md), [MCP](docs/mcp.md), [portal token exchange](docs/portal-token.md), and [SQL performance case study](docs/sql-performance.md).

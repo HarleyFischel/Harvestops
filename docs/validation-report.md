@@ -6,8 +6,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
-- `.venv312/bin/python -m pytest -q` passed: 31 tests, with 1 SQL integration test skipped because no connection string was supplied.
-- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 31 passed / 1 skipped result and a redacted configuration summary.
+- `.venv312/bin/python -m pytest -q` passed: 32 tests, with 1 SQL integration test skipped because no connection string was supplied.
+- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 32 passed / 1 skipped result and a redacted configuration summary.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
@@ -17,7 +17,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - A temporary Redis 7 container verified the production-style `SESSION_REDIS_URL` mode, demo login, session-bound CSRF token, and readiness behavior; the temporary container was removed afterward.
 - The ARM64 `Dockerfile.dev` image built from `requirements-dev.lock` and its startup command passed `/healthz` and Dash HTTP smoke checks.
 - Local rollback exercise passed: the prior local ARM64 image and the current final ARM64 image each served `/healthz` 200 and root HTTP 200 on the same port in succession; temporary containers were removed.
-- MCP tool tests passed locally for authenticated lookup, KPI definitions, exception result limits, and unknown-principal rejection; no remote MCP deployment was claimed.
+- MCP tool tests passed locally for lookup, KPI definitions, exception result limits, unknown-principal rejection, and exposed-mode RS256 authentication; no remote MCP deployment was claimed.
 - GitHub Actions YAML parsed locally; the CI workflow now contains an SQL Server service job gated by the repository's `SQLSERVER_TEST_PASSWORD` secret, and the release workflow performs federated ACR login, immutable digest update, and smoke check.
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
