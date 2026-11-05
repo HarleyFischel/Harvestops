@@ -19,6 +19,12 @@ def test_unauthorized_status_change_is_rejected():
         store.change_status("SHP-1001", "Exception", store.users["demo.viewer"], 1)
 
 
+def test_anonymous_workflow_change_is_rejected():
+    store = InMemoryStore()
+    with pytest.raises(PermissionError, match="Authenticated user required"):
+        store.change_status("SHP-1001", "Exception", None, 1)
+
+
 def test_status_transition_and_optimistic_concurrency():
     store = InMemoryStore()
     operator = store.users["demo.operator"]

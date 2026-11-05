@@ -6,6 +6,7 @@ workflow rules in Python while using parameterized T-SQL transactions for persis
 
 import csv
 import io
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -51,6 +52,8 @@ class SqlServerStore:
         return {"shipment_volume": len(rows), "on_time_rate": (sum(1 for r in closed if r.on_time) / len(closed) * 100) if closed else 0, "fill_rate": (float(total_shipped / total_ordered) * 100) if total_ordered else 0, "freight_cost": float(sum((r.freight_cost for r in rows), Decimal(0))), "production_output": int(total_shipped * Decimal("1.12")), "labor_productivity": round(float(total_shipped / max(len(rows), 1)), 1)}
 
     def change_status(self, shipment_id: str, new_status: str, actor: User, expected_version: int) -> Shipment:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         if "operator" not in actor.roles and "admin" not in actor.roles:
             raise PermissionError("Operator role required")
         if new_status not in STATUSES:
@@ -95,6 +98,8 @@ class SqlServerStore:
         return [AuditEvent(row["event_id"], row["actor"], row["action_name"], row["entity_type"], row["entity_id"], {"raw": row["detail_json"]}, row["occurred_utc"].replace(tzinfo=timezone.utc)) for row in rows]
 
     def create_purchase(self, requester: User, facility: str, lines: list[dict]) -> PurchaseRequest:
+        if not requester:
+            raise PermissionError("Authenticated user required")
         if not lines:
             raise DomainError("At least one request line is required")
         parsed = []
@@ -122,6 +127,8 @@ class SqlServerStore:
         return self._purchase(request_id)
 
     def submit_purchase(self, request_id: str, actor: User, expected_version: int) -> PurchaseRequest:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
         if request.requester != actor.username and "admin" not in actor.roles:
             raise PermissionError("Only the requester or an admin can submit")
@@ -131,6 +138,8 @@ class SqlServerStore:
         return self._purchase(request_id)
 
     def decide_purchase(self, request_id: str, actor: User, decision: str, comment: str, expected_version: int) -> PurchaseRequest:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
         if request.requester == actor.username:
             raise PermissionError("Self-approval is not permitted")
@@ -150,24 +159,31 @@ class SqlServerStore:
             conn.commit()
 
     def import_shipments(self, text: str, actor: User) -> dict:
-        if "operator" not in actor.roles and "admin" not in actor.roles:
+        if not actor or ("operator" not in actor.roles and "admin" not in actor.roles):
             raise PermissionError("Operator role required")
         reader = csv.DictReader(io.StringIO(text))
-        errors, valid = [], []
+        errors, valid, seen = [], [], set()
         for line_no, row in enumerate(reader, 2):
             try:
+                shipment_id = (row.get("shipment_id") or "").strip()
                 qty, shipped = Decimal(row["ordered_qty"]), Decimal(row["shipped_qty"])
                 planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
-                if not row.get("shipment_id") or qty <= 0 or shipped < 0 or shipped > qty:
+                status = row.get("status", "Scheduled")
+                if not shipment_id or shipment_id in seen:
+                    errors.append({"line": line_no, "error": "missing or duplicate shipment_id"})
+                    continue
+                if qty <= 0 or shipped < 0 or shipped > qty or status not in STATUSES:
                     raise ValueError
-                valid.append((line_no, row, qty, shipped, planned))
+                seen.add(shipment_id)
+                valid.append((line_no, row, qty, shipped, planned, status))
             except (KeyError, InvalidOperation, ValueError):
                 errors.append({"line": line_no, "error": "invalid shipment record"})
         run_id = "SQL-" + secrets.token_hex(5).upper()
         applied = 0
         with self.repository.connect() as conn:
-            conn.execute("INSERT dbo.import_runs(source_name, status) VALUES ('shipment-update.csv', 'Started')")
-            for line_no, row, qty, shipped, planned in valid:
+            run_row = self.repository.rows(conn.execute("INSERT dbo.import_runs(source_name, status) OUTPUT INSERTED.import_run_id VALUES ('shipment-update.csv', 'Started')"))[0]
+            run_id = f"IMP-{run_row['import_run_id']:04d}"
+            for line_no, row, qty, shipped, planned, status in valid:
                 exists = self.repository.rows(conn.execute("SELECT 1 AS found FROM dbo.shipments WHERE shipment_id = ?", row["shipment_id"]))
                 if exists:
                     continue
@@ -176,7 +192,11 @@ class SqlServerStore:
                     errors.append({"line": line_no, "error": "unknown customer, product, facility, or carrier"})
                     continue
                 ref = refs[0]
-                conn.execute("""INSERT dbo.shipments(shipment_id, customer_id, product_id, facility_id, carrier_id, dock_code, appointment_utc, planned_departure_utc, ordered_qty, shipped_qty, freight_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", row["shipment_id"], ref["customer_id"], ref["product_id"], ref["facility_id"], ref["carrier_id"], row.get("dock", "D-01"), planned - timedelta(hours=2), planned, qty, shipped, Decimal(row.get("freight_cost", "0")), row.get("status", "Scheduled"))
+                conn.execute("""INSERT dbo.shipments(shipment_id, customer_id, product_id, facility_id, carrier_id, dock_code, appointment_utc, planned_departure_utc, ordered_qty, shipped_qty, freight_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", row["shipment_id"], ref["customer_id"], ref["product_id"], ref["facility_id"], ref["carrier_id"], row.get("dock", "D-01"), planned - timedelta(hours=2), planned, qty, shipped, Decimal(row.get("freight_cost", "0")), status)
                 applied += 1
+            for error in errors:
+                conn.execute("INSERT dbo.import_errors(import_run_id, source_row_no, error_message, raw_json) VALUES (?, ?, ?, ?)", run_row["import_run_id"], error["line"], error["error"], json.dumps(error))
+            conn.execute("UPDATE dbo.import_runs SET completed_utc = SYSUTCDATETIME(), applied_count = ?, rejected_count = ?, status = 'Completed' WHERE import_run_id = ?", applied, len(errors), run_row["import_run_id"])
+            conn.execute("INSERT dbo.audit_events(actor, action_name, entity_type, entity_id, detail_json) VALUES (?, 'shipment.import', 'import_run', ?, ?)", actor.username, run_id, json.dumps({"applied": applied, "errors": len(errors)}))
             conn.commit()
         return {"run_id": run_id, "actor": actor.username, "applied": applied, "errors": errors, "occurred_utc": utc_now().isoformat()}

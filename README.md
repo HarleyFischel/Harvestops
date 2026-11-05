@@ -12,6 +12,8 @@ Supported Python: 3.11–3.13. Python 3.12 is recommended.
     pip install -e '.[dev]'
     ./scripts/start-demo.sh
 
+For reproducible runtime dependency resolution, `requirements.lock` is exported from `uv.lock`; use `uv sync --locked` when uv is available.
+
 Open http://127.0.0.1:8050. Demo accounts are demo.viewer, demo.operator, demo.approver, and demo.admin. The role selector is development-only but server-side authorization is still enforced.
 
 ## Codespaces
@@ -46,3 +48,5 @@ The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sql
 AG Grid Community is the only required grid feature. Enterprise features are not used.
 
 See docs/validation-report.md for actual evidence and unverified gates.
+
+Leadership and delivery references: [project charter](docs/project-charter.md), [developer onboarding](docs/developer-onboarding.md), [UAT checklist](docs/uat-checklist.md), [skills evidence](docs/skills-evidence.md), and [release checklist](docs/change-management.md).

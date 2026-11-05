@@ -11,9 +11,11 @@ RUN apt-get update \
 WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
+COPY requirements.lock ./
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir --require-hashes -r requirements.lock && pip install --no-cache-dir --no-deps .
 COPY harvestops ./harvestops
 COPY db ./db
+COPY knowledge ./knowledge
 COPY harvestops/assets ./assets
 RUN chown -R appuser:appuser /app
 USER appuser

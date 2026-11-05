@@ -15,3 +15,22 @@
 | knowledge_documents/roles | Search corpus and access | sensitivity, role_name |
 
 Key constraints enforce positive quantities, shipped <= ordered, valid workflow statuses, foreign-key integrity, and decimal precision.
+
+## Relationship diagram
+
+```mermaid
+erDiagram
+  FACILITIES ||--o{ SHIPMENTS : handles
+  CUSTOMERS ||--o{ SHIPMENTS : orders
+  PRODUCTS ||--o{ SHIPMENTS : contains
+  CARRIERS ||--o{ SHIPMENTS : hauls
+  SHIPMENTS ||--o{ SHIPMENT_LINES : has
+  SHIPMENTS ||--o{ DOCK_APPOINTMENTS : schedules
+  FACILITIES ||--o{ PRODUCTION_RUNS : runs
+  PRODUCTS ||--o{ PRODUCTION_RUNS : produces
+  FACILITIES ||--o{ PURCHASE_REQUESTS : scopes
+  PURCHASE_REQUESTS ||--o{ PURCHASE_REQUEST_LINES : contains
+  PRODUCTS ||--o{ PURCHASE_REQUEST_LINES : requested
+  IMPORT_RUNS ||--o{ IMPORT_ERRORS : records
+  KNOWLEDGE_DOCUMENTS ||--o{ KNOWLEDGE_DOCUMENT_ROLES : permits
+```

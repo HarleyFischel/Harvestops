@@ -13,6 +13,7 @@ htmlcov/
 playwright-report/
 test-results/
 node_modules/
+legacy/dist/
 *.log
 data/*.bak
 secrets/

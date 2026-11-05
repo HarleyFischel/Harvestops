@@ -11,6 +11,7 @@ dependencies = [
   "dash==2.18.2",
   "dash-ag-grid==31.3.0",
   "Flask==3.0.3",
+  "Flask-Session==0.8.0",
   "gunicorn==23.0.0",
   "plotly==5.24.1",
   "pydantic-settings==2.6.1",
@@ -20,6 +21,7 @@ dependencies = [
   "cryptography==43.0.3",
   "msal==1.31.1",
   "mcp==1.2.0",
+  "redis==5.2.1",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +36,7 @@ dev = [
 testpaths = ["tests"]
 norecursedirs = ["tests/browser"]
 addopts = "-q"
+markers = ["integration: requires a reachable SQL Server instance"]
 
 [tool.ruff]
 line-length = 100

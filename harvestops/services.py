@@ -96,6 +96,8 @@ class InMemoryStore:
         }
 
     def change_status(self, shipment_id: str, new_status: str, actor: User, expected_version: int) -> Shipment:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         if "operator" not in actor.roles and "admin" not in actor.roles:
             raise PermissionError("Operator role required")
         if new_status not in STATUSES:
@@ -114,6 +116,8 @@ class InMemoryStore:
         return shipment
 
     def create_purchase(self, requester: User, facility: str, lines: list[dict]) -> PurchaseRequest:
+        if not requester:
+            raise PermissionError("Authenticated user required")
         if not lines:
             raise DomainError("At least one request line is required")
         parsed: list[PurchaseLine] = []
@@ -132,6 +136,8 @@ class InMemoryStore:
         return request
 
     def submit_purchase(self, request_id: str, actor: User, expected_version: int) -> PurchaseRequest:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
         if request.requester != actor.username and "admin" not in actor.roles:
             raise PermissionError("Only the requester or an admin can submit")
@@ -145,6 +151,8 @@ class InMemoryStore:
         return request
 
     def decide_purchase(self, request_id: str, actor: User, decision: str, comment: str, expected_version: int) -> PurchaseRequest:
+        if not actor:
+            raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
         if request.requester == actor.username:
             raise PermissionError("Self-approval is not permitted")
@@ -164,7 +172,7 @@ class InMemoryStore:
         return self.purchases[request_id]
 
     def import_shipments(self, text: str, actor: User) -> dict:
-        if "operator" not in actor.roles and "admin" not in actor.roles:
+        if not actor or ("operator" not in actor.roles and "admin" not in actor.roles):
             raise PermissionError("Operator role required")
         reader = csv.DictReader(io.StringIO(text))
         errors, applied, seen = [], 0, set()

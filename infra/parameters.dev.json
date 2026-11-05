@@ -5,6 +5,8 @@
     "appName": { "value": "harvestops-dev" },
     "image": { "value": "replace-with-immutable-acr-image-digest" },
     "sqlServerFqdn": { "value": "replace-with-existing-sql-server.database.windows.net" },
-    "acrName": { "value": "replacewithuniqueacrname" }
+    "acrName": { "value": "replacewithuniqueacrname" },
+    "sqlPasswordSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-sql-password" },
+    "sessionRedisUrlSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-session-redis-url" }
   }
 }

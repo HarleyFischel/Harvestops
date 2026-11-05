@@ -8,5 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg ca-c
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspaces/HarvestOps
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -e '.[dev]'
+COPY requirements-dev.lock ./
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir --require-hashes -r requirements-dev.lock
+COPY harvestops ./harvestops
+COPY knowledge ./knowledge
+RUN pip install --no-cache-dir --no-deps -e .
 CMD ["python", "-m", "harvestops.web"]

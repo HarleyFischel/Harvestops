@@ -28,6 +28,31 @@ def test_demo_identity_cannot_be_enabled_in_production():
         raise AssertionError("production demo mode must fail closed")
 
 
+def test_production_rejects_demo_identity_even_when_demo_mode_is_false():
+    try:
+        make_app(Settings(app_env="production", demo_mode=False, storage_mode="demo", identity_mode="demo"))
+    except RuntimeError as exc:
+        assert "IDENTITY_MODE" in str(exc)
+    else:
+        raise AssertionError("production must reject demo identity")
+
+
+def test_production_requires_server_side_session_backend():
+    settings = Settings(app_env="production", demo_mode=False, storage_mode="demo", identity_mode="entra", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant")
+    try:
+        make_app(settings)
+    except RuntimeError as exc:
+        assert "SESSION_REDIS_URL" in str(exc)
+    else:
+        raise AssertionError("production must require distributed session storage")
+
+
+def test_entra_layout_does_not_expose_demo_role_switch():
+    settings = Settings(identity_mode="entra", demo_mode=False, storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant", session_redis_url="redis://localhost:6379/0")
+    app = make_app(settings)
+    assert "role-switch" not in str(app.layout)
+
+
 def test_required_grid_and_purchase_callbacks_exist():
     app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
     callback_keys = set(app.callback_map)

@@ -14,6 +14,7 @@ from flask import Flask, jsonify, make_response, redirect, request, session
 from .auth import EntraAuth
 from .config import Settings, get_settings
 from .domain import User
+from .knowledge import KnowledgeService
 from .services import DomainError, InMemoryStore
 from .sql_store import SqlServerStore
 
@@ -34,6 +35,11 @@ def csrf_token() -> str:
     return token
 
 
+def valid_csrf(token: str | None) -> bool:
+    expected = session.get("csrf_token")
+    return bool(expected and token and secrets.compare_digest(token, expected))
+
+
 def require_role(store: InMemoryStore, *roles):
     def decorator(fn):
         @wraps(fn)
@@ -47,12 +53,14 @@ def require_role(store: InMemoryStore, *roles):
 
 
 def build_layout(store: InMemoryStore, settings: Settings):
+    demo_identity = settings.demo_mode and settings.identity_mode == "demo"
     return html.Div([
         dcc.Location(id="url"),
         dcc.Store(id="active-user", data="demo.viewer"),
+        dcc.Store(id="csrf-token"),
         html.Header([
             html.Div([html.Div("HARVESTOPS", className="brand"), html.Div("Produce operations control plane", className="tagline")], className="brand-lockup"),
-            html.Div([html.Span("SYNTHETIC DATA · DEMO MODE", className="demo-pill"), html.Span(id="user-label", className="user-label")], className="header-meta"),
+            html.Div([html.Span("SYNTHETIC DATA · DEMO MODE" if demo_identity else "SYNTHETIC DATA · ENTRA IDENTITY", className="demo-pill"), html.Span(id="user-label", className="user-label")], className="header-meta"),
         ], className="topbar"),
         html.Main([
             html.Aside([
@@ -63,9 +71,9 @@ def build_layout(store: InMemoryStore, settings: Settings):
                     {"label": "Purchasing approvals", "value": "purchasing"},
                     {"label": "Knowledge assistant", "value": "knowledge"},
                 ], value="dashboard", className="nav-list", labelClassName="nav-item"),
-                html.Div("DEMO ACCOUNT", className="eyebrow side-space"),
-                dcc.Dropdown(id="role-switch", options=[{"label": u.display_name, "value": u.username} for u in store.users.values()], value="demo.viewer", clearable=False),
-                html.Div("Role changes are development-only and enforced server-side.", className="side-note"),
+                html.Div("DEMO ACCOUNT", className="eyebrow side-space") if demo_identity else html.Div("IDENTITY", className="eyebrow side-space"),
+                dcc.Dropdown(id="role-switch", options=[{"label": u.display_name, "value": u.username} for u in store.users.values()], value="demo.viewer", clearable=False) if demo_identity else html.A("Sign in with Microsoft Entra ID", href="/auth/login", className="button secondary"),
+                html.Div("Role changes are development-only and enforced server-side.", className="side-note") if demo_identity else html.Div("Roles are mapped from Entra app-role claims.", className="side-note"),
             ], className="sidebar"),
             html.Section(id="page-content", className="content"),
         ], className="shell"),
@@ -124,9 +132,16 @@ def make_app(settings: Settings | None = None):
     if errors:
         raise RuntimeError("Invalid configuration: " + "; ".join(errors))
     store = SqlServerStore(settings) if settings.storage_mode == "sqlserver" else InMemoryStore()
+    knowledge = KnowledgeService(settings.claude_api_key, settings.claude_model)
     server = Flask(__name__)
     server.secret_key = settings.secret_key
     server.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=settings.app_env == "production", PERMANENT_SESSION_LIFETIME=1800)
+    if settings.session_redis_url:
+        from flask_session import Session
+        from redis import Redis
+
+        server.config.update(SESSION_TYPE="redis", SESSION_REDIS=Redis.from_url(settings.session_redis_url), SESSION_KEY_PREFIX="harvestops:")
+        Session(server)
 
     @server.after_request
     def security_headers(response):
@@ -216,9 +231,8 @@ def make_app(settings: Settings | None = None):
     @require_role(store, "operator", "admin")
     def import_shipments():
         try:
-            expected = session.get("csrf_token")
             supplied = request.headers.get("X-CSRF-Token", "")
-            if not expected or not secrets.compare_digest(supplied, expected):
+            if not valid_csrf(supplied):
                 return jsonify({"error": "CSRF token required"}), 403
             actor = current_user(store)
             text = request.get_data(as_text=True)
@@ -235,15 +249,20 @@ def make_app(settings: Settings | None = None):
     def switch_page(page):
         return {"dashboard": dashboard_view(store), "shipments": shipments_view(store), "purchasing": purchasing_view(), "knowledge": knowledge_view()}.get(page, dashboard_view(store))
 
+    @app.callback(Output("csrf-token", "data"), Input("url", "pathname"))
+    def initialize_csrf(_):
+        return csrf_token()
+
     @app.callback(Output("user-label", "children"), Input("role-switch", "value"))
     def role_label(username):
         return f"{store.users[username].display_name} · {', '.join(sorted(store.users[username].roles))}"
 
-    @app.callback(Output("active-user", "data"), Input("role-switch", "value"))
-    def switch_user(username):
-        if settings.demo_mode:
+    @app.callback(Output("active-user", "data"), Input("role-switch", "value"), State("csrf-token", "data"))
+    def switch_user(username, token):
+        if settings.demo_mode and valid_csrf(token) and username in store.users:
             session["username"] = username
-        return username
+            return username
+        return no_update
 
     @app.callback(Output("kpi-row", "children"), Output("volume-chart", "figure"), Output("service-chart", "figure"), Output("exceptions-table", "children"), Input("filter-customer", "value"), Input("filter-product", "value"), Input("filter-facility", "value"))
     def refresh_dashboard(customer, product, facility):
@@ -267,19 +286,23 @@ def make_app(settings: Settings | None = None):
         data = [{"shipment_id": r.shipment_id, "customer": r.customer, "product": r.product, "facility": r.facility, "carrier": r.carrier, "planned_departure": r.planned_departure_utc.isoformat(), "actual_departure": r.actual_departure_utc.isoformat() if r.actual_departure_utc else "", "ordered_qty": str(r.ordered_qty), "shipped_qty": str(r.shipped_qty), "freight_cost": str(r.freight_cost), "status": r.status, "version": r.version} for r in rows]
         return data, f"Page {min(page, max_page)} of {max_page} · {total} matching shipments"
 
-    @app.callback(Output("shipment-alert", "children"), Input("apply-status", "n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), prevent_initial_call=True)
-    def apply_status(_, shipment_id, new_status, version):
+    @app.callback(Output("shipment-alert", "children"), Input("apply-status", "n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), prevent_initial_call=True)
+    def apply_status(_, shipment_id, new_status, version, token):
         try:
+            if not valid_csrf(token):
+                raise PermissionError("CSRF token required")
             user = current_user(store)
             updated = store.change_status(shipment_id, new_status, user, int(version))
             return f"Updated {updated.shipment_id} to {updated.status}; version {updated.version}."
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not apply change: {exc}"
 
-    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), prevent_initial_call=True)
-    def import_from_upload(contents, filename):
+    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), prevent_initial_call=True)
+    def import_from_upload(contents, filename, token):
         try:
             import base64
+            if not valid_csrf(token):
+                raise PermissionError("CSRF token required")
             user = current_user(store)
             if not user or not user.roles.intersection({"operator", "admin"}):
                 raise PermissionError("Operator role required")
@@ -289,10 +312,12 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
             return f"Import failed: {exc}"
 
-    @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), prevent_initial_call=True)
-    def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version):
+    @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), State("csrf-token", "data"), prevent_initial_call=True)
+    def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version, token):
         from dash import ctx
         try:
+            if not valid_csrf(token):
+                raise PermissionError("CSRF token required")
             user = current_user(store)
             if ctx.triggered_id == "create-purchase":
                 req = store.create_purchase(user, facility, [{"product": product, "quantity": qty, "unit_cost": cost}])
@@ -311,13 +336,13 @@ def make_app(settings: Settings | None = None):
 
     @app.callback(Output("knowledge-result", "children"), Input("knowledge-submit", "n_clicks"), State("knowledge-query", "value"), State("knowledge-mode", "value"), prevent_initial_call=True)
     def knowledge_search(_, query, mode):
-        docs = [{"title": "KPI definitions", "body": "Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments.", "source": "knowledge/kpi-definitions.md"}, {"title": "Dock exception playbook", "body": "For a late departure, confirm appointment, carrier arrival, and quantity before changing status or escalating.", "source": "knowledge/dock-operations.md"}, {"title": "Purchase controls", "body": "A requester cannot approve their own request. Approval decisions require the pending state and current version.", "source": "knowledge/purchasing.md"}]
-        q = (query or "").lower()
-        hits = [d for d in docs if any(term in (d["title"] + " " + d["body"]).lower() for term in q.split())]
+        hits = knowledge.search(query, current_user(store))
         if not hits:
-            hits = docs[:1]
-        label = "Local search" if mode == "search" else "Claude answer mode (optional; provider call not configured in demo)"
-        return html.Div([html.Div(label, className="mode-label"), html.H3(hits[0]["title"]), html.P(hits[0]["body"]), html.Div([f"Source: {d['source']}" for d in hits], className="citation")])
+            return html.Div([html.Div("No permitted operating document matched that query.", className="empty-state")])
+        if mode == "claude":
+            result = knowledge.answer_with_claude(query, hits)
+            return html.Div([html.Div("Claude answer mode · optional provider", className="mode-label"), html.P(result["message"]), html.Div(f"Usage metadata: {result['usage'] or 'not available'}", className="section-subtitle"), html.Div([f"Source: {doc.source}" for doc in hits], className="citation")])
+        return html.Div([html.Div("Local search", className="mode-label"), html.H3(hits[0].title), html.P(hits[0].body), html.Div([f"Source: {doc.source}" for doc in hits], className="citation")])
 
     return app
 

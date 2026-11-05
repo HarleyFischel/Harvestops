@@ -4,6 +4,10 @@ infra/main.bicep is a parameterized, cost-conscious example for Azure Container 
 
 Prerequisites: Azure CLI, an existing subscription/resource group, ACR permissions, Azure SQL firewall/private networking, a Key Vault or Container Apps secret plan, and GitHub OIDC federated credentials. Expected billable resources include Container Apps environment/logging, ACR storage/builds, Azure SQL, and optional Key Vault.
 
+The template expects two existing Key Vault secret URIs: one for the SQL password and one for the Redis session URL. Grant the Container App user-assigned identity `Key Vault Secrets User` on that vault. Grant the same identity `AcrPull` on the ACR; the template uses the identity for registry pulls. Create the SQL contained user separately and grant only the required database roles (`db_datareader`, `db_datawriter`, and `EXECUTE` on approved procedures).
+
+The release workflow is manual and requires environment-scoped variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `ACR_NAME`, `ACR_LOGIN_SERVER`, `RESOURCE_GROUP`, and `CONTAINER_APP_NAME`. It logs into ACR through the federated Azure identity, pushes the image, updates the app to the resulting immutable digest, and performs a `/healthz` smoke check. GitHub environment approval rules must be configured in repository settings; YAML alone cannot create plan-dependent protections.
+
 Validate only:
 
     az bicep build --file infra/main.bicep

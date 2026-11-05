@@ -19,11 +19,13 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 ## Milestone 2 — data, security, and tests
 
 - [x] SQL Server/Azure SQL schema, migrations, seed, views, and workflow stored procedure
+- [x] Staging import table/procedure and ADF mapping template
 - [x] pyodbc repository with parameterized SQL and UTC policy
 - [x] CSV validation/import with idempotency, staging semantics, and audit trail
 - [x] Knowledge search with permission filtering and optional Claude adapter boundary
 - [x] Signed-token exchange example with JOSE validation and replay store
 - [x] Negative authorization and workflow tests
+- [x] Portal token tamper, expiry, audience, and replay tests
 - [x] Retrieval evaluation fixture and benchmark harness
 
 ## Milestone 3 — delivery and examples
