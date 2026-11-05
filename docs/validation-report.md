@@ -17,7 +17,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 ## Pending or unverified
 
 - External SQL Server was not configured. Needed: reachable host/IP and port, database name, application login/password or Entra/managed identity plan, TLS certificate chain, and firewall/VPN access. The app will use SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT=true, and SQL_TRUST_SERVER_CERTIFICATE=false.
-- Docker daemon was unavailable, so ARM64 and AMD64 image builds, container health, restart persistence, backup/restore, and Compose runtime verification are pending. Do not claim them as successful.
+- Docker Desktop was later available. Separate ARM64 and AMD64 builds completed successfully. Both images passed architecture metadata checks, required Python/MCP imports, ODBC Driver 18 checks, `/healthz`, and Dash HTTP smoke checks. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude, and remote MCP are configuration-only until credentials and authorization are supplied.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access.
 

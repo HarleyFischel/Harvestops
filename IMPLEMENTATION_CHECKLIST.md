@@ -26,7 +26,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 
 ## Milestone 3 — delivery and examples
 
-- [x] ARM64 development image and AMD64 deployment image definitions
+- [x] ARM64 development image and AMD64 deployment image definitions and separate builds
 - [x] Mac + external database Compose and full x86-64 development Compose
 - [x] Codespaces devcontainer and one-command startup/test scripts
 - [x] GitHub Actions checks, image tagging, OIDC/Azure deployment templates
@@ -41,5 +41,6 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Python unit and service tests pass
 - [x] Demo-mode runtime smoke test passes
 - [x] Browser smoke test passes against the local demo server
-- [~] Container smoke tests are scripted; execution pending Docker daemon availability
+- [x] ARM64 and AMD64 application container health/Dash smoke tests
+- [~] Full x86 SQL Server Compose runtime and persistence exercise pending on the intended x86-64 host
 - [~] Azure deployment validation is configuration-only until credentials are supplied
