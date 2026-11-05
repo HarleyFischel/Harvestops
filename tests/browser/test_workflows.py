@@ -54,6 +54,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
 
         page.locator("label").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
+        assert page.get_by_text("PR-1002", exact=True).count() >= 1
         page.locator("#purchase-qty").fill("4")
         page.locator("#purchase-cost").fill("3.25")
         page.get_by_role("button", name="Create request").click()

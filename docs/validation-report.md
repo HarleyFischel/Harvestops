@@ -16,6 +16,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `uv lock` and a hash-pinned `requirements.lock` were generated; the production Dockerfile installs from the lock before installing the application package.
 - A temporary Redis 7 container verified the production-style `SESSION_REDIS_URL` mode, demo login, session-bound CSRF token, and readiness behavior; the temporary container was removed afterward.
 - The ARM64 `Dockerfile.dev` image built from `requirements-dev.lock` and its startup command passed `/healthz` and Dash HTTP smoke checks.
+- Local rollback exercise passed: the prior local ARM64 image and the current final ARM64 image each served `/healthz` 200 and root HTTP 200 on the same port in succession; temporary containers were removed.
 - MCP tool tests passed locally for authenticated lookup, KPI definitions, exception result limits, and unknown-principal rejection; no remote MCP deployment was claimed.
 - GitHub Actions YAML parsed locally; the CI workflow now contains an SQL Server service job gated by the repository's `SQLSERVER_TEST_PASSWORD` secret, and the release workflow performs federated ACR login, immutable digest update, and smoke check.
 - Official Bicep CLI compiled `infra/main.bicep` successfully; no Azure deployment or resource provisioning was performed.
