@@ -18,3 +18,10 @@ Deploy only with explicit authorization:
     az deployment group create --resource-group "$RESOURCE_GROUP" --template-file infra/main.bicep --parameters @infra/parameters.dev.json
 
 Use separate parameter files for development, staging, and production. Roll back by redeploying the prior immutable image digest and only then applying backward-compatible database changes.
+
+Cleanup requires explicit authorization because it can delete billable resources and data. For a disposable resource group, review the resource list and then run:
+
+    az resource list --resource-group "$RESOURCE_GROUP" --output table
+    az group delete --name "$RESOURCE_GROUP" --yes --no-wait
+
+For shared resource groups, delete only the named Container App, managed environment, ACR, Log Analytics workspace, and user-assigned identity after confirming ownership. Do not delete an existing Azure SQL server or Key Vault unless its data-retention and recovery implications have been approved.
