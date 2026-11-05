@@ -36,7 +36,8 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
 
         def login_demo(username):
-            status = page.evaluate("""async username => (await fetch('/auth/demo', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({username})})).status""", username)
+            token = page.evaluate("""async () => (await fetch('/api/csrf')).json().then(payload => payload.csrf_token)""")
+            status = page.evaluate("""async ({username, token}) => (await fetch('/auth/demo', {method: 'POST', headers: {'content-type': 'application/json', 'X-CSRF-Token': token}, body: JSON.stringify({username})})).status""", {"username": username, "token": token})
             assert status == 200
             page.reload(wait_until="networkidle")
             page.locator("#csrf-status").get_by_text("ready").wait_for()

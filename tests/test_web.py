@@ -162,6 +162,15 @@ def test_demo_dash_surface_gets_a_server_side_viewer_session():
     assert response.get_json()["csrf_token"]
 
 
+def test_demo_account_switch_requires_csrf_after_session_exists():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    assert client.get("/").status_code == 200
+    assert client.post("/auth/demo", json={"username": "demo.operator"}).status_code == 403
+    token = client.get("/api/csrf").get_json()["csrf_token"]
+    assert client.post("/auth/demo", json={"username": "demo.operator"}, headers={"X-CSRF-Token": token}).status_code == 200
+
+
 def test_import_endpoint_is_authorized_and_idempotent():
     app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
     client = app.server.test_client()

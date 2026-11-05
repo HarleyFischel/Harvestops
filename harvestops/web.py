@@ -218,6 +218,8 @@ def make_app(settings: Settings | None = None):
     def demo_login():
         if not settings.demo_mode or settings.identity_mode != "demo":
             return jsonify({"error": "demo identity is disabled"}), 403
+        if session.get("username") and not valid_csrf(request.headers.get("X-CSRF-Token", ""), allow_cookie=False):
+            return jsonify({"error": "CSRF token required"}), 403
         username = request.json.get("username", "") if request.is_json else ""
         if username not in store.users:
             return jsonify({"error": "unknown demo account"}), 400
