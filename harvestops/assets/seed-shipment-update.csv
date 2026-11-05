@@ -1,0 +1,4 @@
+shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status
+SHP-2001,City Market,Spring Mix,Salinas,GreenLine,D-07,2026-03-02T15:00:00Z,500,500,875,Scheduled
+SHP-2002,Harvest Grocers,Baby Spinach,Yuma,Westway,D-08,2026-03-03T16:00:00Z,400,390,710,Scheduled
+SHP-2003,FreshMart Northeast,Romaine Hearts,Oxnard,NorthStar,D-09,2026-03-04T17:00:00Z,300,350,625,Scheduled

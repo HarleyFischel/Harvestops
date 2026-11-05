@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harvestops"
+version = "0.1.0"
+description = "Synthetic produce operations portfolio application"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "dash==2.18.2",
+  "dash-ag-grid==31.3.0",
+  "Flask==3.0.3",
+  "gunicorn==23.0.0",
+  "plotly==5.24.1",
+  "pydantic-settings==2.6.1",
+  "pyodbc==5.2.0",
+  "PyJWT==2.10.1",
+  "cryptography==43.0.3",
+  "msal==1.31.1",
+  "mcp==1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.3",
+  "pytest-cov==6.0.0",
+  "ruff==0.8.4",
+  "playwright==1.49.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501", "E702"]
+
+[tool.setuptools.packages.find]
+include = ["harvestops*"]
