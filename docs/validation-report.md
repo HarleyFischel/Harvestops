@@ -27,7 +27,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - External SQL Server was not configured. Needed: reachable host/IP and port, database name, application login/password or Entra/managed identity plan, TLS certificate chain, and firewall/VPN access. The app will use SQL_SERVER, SQL_DATABASE, SQL_USER, SQL_PASSWORD, SQL_ENCRYPT=true, and SQL_TRUST_SERVER_CERTIFICATE=false.
 - Separate ARM64 and AMD64 builds completed successfully. `docker image inspect` reported `arm64 linux` and `amd64 linux`; both images passed required Python/MCP imports, ODBC Driver 18/module checks, `/healthz`, and Dash HTTP smoke checks in separate containers. The x86 SQL Server Developer image was not fully pulled on the M2 because it is intentionally an x86-only external development dependency; full SQL Compose startup, migrations, restart persistence, and backup/restore remain pending on the intended x86-64 Linux/Proxmox host.
-- Playwright browser smoke passed against the running local server, and a 390px mobile viewport check found both the dashboard heading and synthetic-data indicator.
+- Playwright browser smoke passed against the running local server for the dashboard plus shipment-board and purchasing-screen workflow surfaces, and a 390px mobile viewport check found both the dashboard heading and synthetic-data indicator.
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude provider calls, and remote MCP are configuration-only until credentials and authorization are supplied. The local Claude adapter and MCP tool code are implemented and unit/runtime import checked; remote calls were not claimed.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access.
 
