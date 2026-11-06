@@ -20,6 +20,11 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         page.locator("#shipment-grid").wait_for()
         assert page.get_by_text("Upload shipment CSV").count() == 1
         assert page.get_by_role("button", name="Apply status").count() == 1
+        next_page = page.get_by_role("button", name="Next page")
+        next_page.wait_for()
+        assert next_page.is_enabled()
+        next_page.click()
+        page.get_by_text("Page 2 of 2", exact=True).wait_for()
         page.locator("label").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_role("button", name="Create request").count() == 1

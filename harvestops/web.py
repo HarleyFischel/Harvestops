@@ -20,6 +20,8 @@ from .services import DomainError, InMemoryStore
 from .sql_store import SqlServerStore
 from .ui import empty_state, metric_card, page_heading, section_heading
 
+SHIPMENT_PAGE_SIZE = 4
+
 configure_logging()
 log = logging.getLogger("harvestops")
 
@@ -208,6 +210,30 @@ def import_report_children(history: list[dict]):
     ]
 
 
+def shipment_grid_rows(rows):
+    return [
+        {
+            "shipment_id": row.shipment_id,
+            "customer": row.customer,
+            "product": row.product,
+            "facility": row.facility,
+            "carrier": row.carrier,
+            "dock": row.dock,
+            "dock_appointment": row.appointment_utc.isoformat(),
+            "planned_departure": row.planned_departure_utc.isoformat(),
+            "actual_departure": row.actual_departure_utc.isoformat()
+            if row.actual_departure_utc
+            else "",
+            "ordered_qty": str(row.ordered_qty),
+            "shipped_qty": str(row.shipped_qty),
+            "freight_cost": str(row.freight_cost),
+            "status": row.status,
+            "version": row.version,
+        }
+        for row in rows
+    ]
+
+
 def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
     return html.Div(
@@ -341,13 +367,6 @@ def shipments_view(store: InMemoryStore):
                         ],
                         className="filter-control",
                     ),
-                    html.Div(
-                        [
-                            html.Label("Server page"),
-                            dcc.Input(id="ship-page", type="number", min=1, value=1),
-                        ],
-                        className="filter-control",
-                    ),
                 ],
                 className="filter-row",
             ),
@@ -392,6 +411,27 @@ def shipments_view(store: InMemoryStore):
                 style={"height": "430px", "width": "100%"},
             ),
             html.Div(id="shipment-page-info", className="section-subtitle"),
+            dcc.Store(id="ship-page", data=1),
+            html.Div(
+                [
+                    html.Button(
+                        "Previous page",
+                        id="ship-prev",
+                        className="button secondary",
+                        disabled=True,
+                    ),
+                    html.Span("Page 1 of 1", id="ship-pagination-label", role="status"),
+                    html.Button(
+                        "Next page",
+                        id="ship-next",
+                        className="button secondary",
+                        disabled=True,
+                    ),
+                ],
+                id="ship-pagination",
+                className="pagination-control",
+                **{"aria-label": "Shipment board pages"},
+            ),
             dcc.Upload(
                 id="shipment-import-upload",
                 children=html.Div("Upload shipment CSV"),
@@ -926,40 +966,45 @@ def make_app(settings: Settings | None = None):
         return cards, volume, service, table
 
     @app.callback(
+        Output("ship-page", "data"),
         Output("shipment-grid", "rowData"),
         Output("shipment-page-info", "children"),
+        Output("ship-prev", "disabled"),
+        Output("ship-next", "disabled"),
+        Output("ship-pagination-label", "children"),
         Input("ship-customer", "value"),
         Input("ship-exceptions", "value"),
-        Input("ship-page", "value"),
+        Input("ship-prev", "n_clicks"),
+        Input("ship-next", "n_clicks"),
+        State("ship-page", "data"),
     )
-    def refresh_shipments(customer, exception, page):
-        page = max(1, int(page or 1))
+    def refresh_shipments(customer, exception, _, __, stored_page):
+        from dash import ctx
+
+        page = max(1, int(stored_page or 1))
+        if ctx.triggered_id == "ship-prev":
+            page = max(1, page - 1)
+        elif ctx.triggered_id == "ship-next":
+            page += 1
         rows, total = store.list_shipments(
-            {"customer": customer, "exceptions_only": bool(exception)}, page, 8
+            {"customer": customer, "exceptions_only": bool(exception)}, page, SHIPMENT_PAGE_SIZE
         )
-        max_page = max(1, math.ceil(total / 8))
-        data = [
-            {
-                "shipment_id": r.shipment_id,
-                "customer": r.customer,
-                "product": r.product,
-                "facility": r.facility,
-                "carrier": r.carrier,
-                "dock": r.dock,
-                "dock_appointment": r.appointment_utc.isoformat(),
-                "planned_departure": r.planned_departure_utc.isoformat(),
-                "actual_departure": r.actual_departure_utc.isoformat()
-                if r.actual_departure_utc
-                else "",
-                "ordered_qty": str(r.ordered_qty),
-                "shipped_qty": str(r.shipped_qty),
-                "freight_cost": str(r.freight_cost),
-                "status": r.status,
-                "version": r.version,
-            }
-            for r in rows
-        ]
-        return data, f"Page {min(page, max_page)} of {max_page} · {total} matching shipments"
+        max_page = max(1, math.ceil(total / SHIPMENT_PAGE_SIZE))
+        safe_page = min(page, max_page)
+        if safe_page != page:
+            rows, total = store.list_shipments(
+                {"customer": customer, "exceptions_only": bool(exception)},
+                safe_page,
+                SHIPMENT_PAGE_SIZE,
+            )
+        return (
+            safe_page,
+            shipment_grid_rows(rows),
+            f"Page {safe_page} of {max_page} · {total} matching shipments",
+            safe_page <= 1,
+            safe_page >= max_page,
+            f"Page {safe_page} of {max_page}",
+        )
 
     @app.callback(
         Output("confirm-status", "displayed"),
