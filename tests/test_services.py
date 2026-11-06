@@ -138,6 +138,18 @@ def test_import_rejects_malformed_record_without_raising():
     assert result["errors"][0]["error"] == "invalid shipment record"
 
 
+def test_import_rejects_non_finite_quantities_and_normalizes_status():
+    store = InMemoryStore()
+    operator = store.users["demo.operator"]
+    csv_text = (
+        "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status\n"
+        "SHP-2004,City Market,Spring Mix,Salinas,GreenLine,D-07,2026-03-02T15:00:00Z,NaN,500,875, Scheduled \n"
+    )
+    result = store.import_shipments(csv_text, operator)
+    assert result["applied"] == 0
+    assert result["errors"] == [{"line": 2, "error": "invalid shipment record"}]
+
+
 def test_repository_sample_import_fixture_is_repeatable_and_reports_invalid_row():
     store = InMemoryStore()
     operator = store.users["demo.operator"]

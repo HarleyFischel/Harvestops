@@ -530,7 +530,7 @@ class InMemoryStore:
                 planned = datetime.fromisoformat(
                     row["planned_departure_utc"].replace("Z", "+00:00")
                 )
-                status = row.get("status", "Scheduled")
+                status = (row.get("status") or "Scheduled").strip()
                 freight = Decimal(row.get("freight_cost", "0"))
                 required = tuple(
                     (row.get(field) or "").strip()
@@ -539,6 +539,9 @@ class InMemoryStore:
                 if (
                     not all(required)
                     or planned.tzinfo is None
+                    or not qty.is_finite()
+                    or not shipped.is_finite()
+                    or not freight.is_finite()
                     or qty <= 0
                     or shipped < 0
                     or shipped > qty

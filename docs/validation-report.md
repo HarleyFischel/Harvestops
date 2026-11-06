@@ -8,9 +8,9 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
 - `scripts/init-env.sh` was syntax-checked and exercised in a temporary directory; it generated a mode-600 `.env` secret and refused to overwrite an existing file.
 - `.venv312/bin/python -m pytest -q` previously passed: 41 tests, with 2 SQL integration tests skipped because no connection string was supplied.
-- Refreshed locked dependencies were installed into `.venv`; `./scripts/test.sh` now passes 45 tests with 2 SQL integration tests skipped, followed by passing Ruff lint and format checks. The security-sensitive pins include PyJWT 2.14.0, cryptography 50.0.0, MCP 1.28.1, MSAL 1.39.0, Pydantic 2.12.5, and Azure Identity 1.25.1.
+- Refreshed locked dependencies were installed into `.venv`; `./scripts/test.sh` now passes 46 tests with 2 SQL integration tests skipped, followed by passing Ruff lint and format checks. The security-sensitive pins include PyJWT 2.14.0, cryptography 50.0.0, MCP 1.28.1, MSAL 1.39.0, Pydantic 2.12.5, and Azure Identity 1.25.1.
 - A post-managed-identity `UV_CACHE_DIR=/private/tmp/harvestops-uv-cache UV_TOOL_DIR=/private/tmp/harvestops-uv-tools uvx --from pip-audit==2.9.0 pip-audit --strict` run completed with `No known vulnerabilities found`.
-- `./scripts/verify-local.sh` passes with 45 passed / 2 skipped and a redacted configuration summary; it printed seeded KPIs of 8 shipments, 66.6667% on-time, 97.6471% fill rate, $13,165 freight, 33,825 production units, and 42.5 units/hour. The script prefers the refreshed `.venv` environment, then `.venv312`, before host Python.
+- `./scripts/verify-local.sh` passes with 46 passed / 2 skipped and a redacted configuration summary; it printed seeded KPIs of 8 shipments, 66.6667% on-time, 97.6471% fill rate, $13,165 freight, 33,825 production units, and 42.5 units/hour. The script prefers the refreshed `.venv` environment, then `.venv312`, before host Python.
 - ruff check . passed.
 - `ruff format --check .` passed after formatting the repository; CI now runs the same blocking format check.
 - `uvx --from pip-audit==2.9.0 pip-audit --strict` completed locally with `No known vulnerabilities found`.
@@ -43,6 +43,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - SQL shipment imports now stage parsed rows in `staging.shipment_updates` and execute the versioned validation/apply procedure before reporting applied and rejected rows; this implementation path is not live-connection verified.
 - The shipment board now displays import freshness (source, status, UTC timestamp, applied count, and rejected count) for both demo and SQL stores and refreshes it after a successful upload; the demo freshness transition is covered by a service test.
 - The shipment board now displays bounded import-run history and individual rejected rows after uploads; service and callback-registration tests cover the report path.
+- Demo and SQL-aligned CSV validation now rejects non-finite numeric values and normalizes padded status values; the regression suite covers the `NaN` rejection path.
 - `data/sample-shipment-updates.csv` is an upload-ready synthetic fixture with one new record, one existing/idempotent record, and one invalid record; the service test verifies the expected applied, repeated, and rejected results.
 - The viewer-protected `/api/shipments/<shipment_id>` detail route returns current status and optimistic-concurrency version for authorized clients; direct unauthorized and not-found behavior are covered by tests.
 - Production configuration now fails closed unless storage is SQL Server, SQL encryption is enabled, and `TrustServerCertificate` is disabled; structured log formatting redacts common secret-shaped key/value messages.
