@@ -15,6 +15,7 @@
     "entraClientSecretSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-entra-client-secret" },
     "entraClientId": { "value": "replace-with-entra-client-id" },
     "entraTenantId": { "value": "replace-with-entra-tenant-id" },
-    "entraRedirectUri": { "value": "https://replace-with-app-host/auth/callback" }
+    "entraRedirectUri": { "value": "https://replace-with-app-host/auth/callback" },
+    "enableMigrationJob": { "value": true }
   }
 }

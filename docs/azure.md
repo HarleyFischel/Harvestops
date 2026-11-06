@@ -19,6 +19,13 @@ This SQL grant, Entra administrator setup, and token-authenticated Azure SQL con
 
 The ADF examples are `adf/pipeline-shipment-import.json` and `adf/trigger-shipment-import.json`. The trigger is an unverified UTC hourly example; deploy it only after configuring linked services, datasets, source paths, and the target Azure SQL connection.
 
+The Bicep template also creates a manual Container Apps Job named `${appName}-migrate` by default. It runs the same immutable image with `python db/run_migrations.py`, uses the same managed identity and Key Vault references, and is deliberately not started as part of web-app rollout. Start it only after reviewing the migration and image digest:
+
+    az containerapp job start --name "${APP_NAME}-migrate" --resource-group "$RESOURCE_GROUP"
+    az containerapp job execution list --name "${APP_NAME}-migrate" --resource-group "$RESOURCE_GROUP" --output table
+
+Set `enableMigrationJob` to `false` only when an approved external migration runner is used. The job resource is configuration-only until Azure credentials and a target environment are supplied; it was not deployed or executed in this validation.
+
 The release workflow is manual and requires environment-scoped variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `ACR_NAME`, `ACR_LOGIN_SERVER`, `RESOURCE_GROUP`, and `CONTAINER_APP_NAME`. With no `image_digest` input it logs into ACR through the federated Azure identity, pushes the AMD64 image with SHA/version tags, updates the app to the resulting immutable digest, and performs a `/healthz` smoke check. For staging-to-production promotion, pass the previously recorded `sha256:...` digest as `image_digest`; that path updates the app without rebuilding. GitHub environment approval rules must be configured in repository settings; YAML alone cannot create plan-dependent protections.
 
 Validate only:

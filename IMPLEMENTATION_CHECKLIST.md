@@ -36,6 +36,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Mac + external database Compose and full x86-64 development Compose
 - [x] Codespaces devcontainer and one-command startup/test scripts
 - [x] GitHub Actions checks, image tagging, OIDC/Azure deployment templates
+- [x] Manual Azure Container Apps migration job configuration with explicit start/inspection commands
 - [x] Read-only MCP example and isolated legacy React sample
 - [x] SQL performance case study and backup/restore/rollback guidance
 - [x] SDLC, security, architecture, onboarding, UAT, and interview demo documentation
@@ -49,4 +50,4 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Browser smoke test passes against the local demo server (6 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests (latest disposable rerun passed; both ran as UID 10001)
 - [~] Full x86 SQL Server Compose runtime, migration, persistence, and backup/restore exercise pending on the intended x86-64 host
-- [~] Azure deployment validation is configuration-only until credentials are supplied
+- [~] Azure deployment and migration-job validation are configuration-only until credentials are supplied

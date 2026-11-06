@@ -18,6 +18,7 @@ param entraClientSecretSecretUri string
 param entraClientId string
 param entraTenantId string
 param entraRedirectUri string
+param enableMigrationJob bool = true
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: '${appName}-logs'
@@ -112,5 +113,60 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
     }
   }
 }
+
+// A manual, one-shot migration job keeps schema changes out of web-worker startup.
+// Start it explicitly after reviewing the image digest and database change plan.
+resource migrationJob 'Microsoft.App/jobs@2025-01-01' = if (enableMigrationJob) {
+  name: '${appName}-migrate'
+  location: location
+  identity: { type: 'UserAssigned', userAssignedIdentities: { '${identity.id}': {} } }
+  properties: {
+    environmentId: env.id
+    configuration: {
+      triggerType: 'Manual'
+      manualTriggerConfig: { parallelism: 1, replicaCompletionCount: 1 }
+      replicaRetryLimit: 0
+      replicaTimeout: 1800
+      registries: [{ server: acr.properties.loginServer, identity: identity.id }]
+      secrets: concat(
+        sqlAuthMode == 'sql_login' ? [
+          { name: 'sql-password', keyVaultUrl: sqlPasswordSecretUri, identity: identity.id }
+        ] : [],
+        [
+        { name: 'secret-key', keyVaultUrl: secretKeySecretUri, identity: identity.id }
+        { name: 'entra-client-secret', keyVaultUrl: entraClientSecretSecretUri, identity: identity.id }
+        ]
+      )
+    }
+    template: {
+      containers: [{
+        name: 'migrations'
+        image: image
+        command: ['python', 'db/run_migrations.py']
+        resources: { cpu: json('0.5'), memory: '1Gi' }
+        env: concat([
+          { name: 'APP_ENV', value: 'production' }
+          { name: 'DEMO_MODE', value: 'false' }
+          { name: 'STORAGE_MODE', value: 'sqlserver' }
+          { name: 'IDENTITY_MODE', value: 'entra' }
+          { name: 'SQL_AUTH_MODE', value: sqlAuthMode }
+          { name: 'SECRET_KEY', secretRef: 'secret-key' }
+          { name: 'SQL_SERVER', value: sqlServerFqdn }
+          { name: 'SQL_DATABASE', value: sqlDatabase }
+          { name: 'SQL_USER', value: sqlUser }
+          { name: 'SQL_ENCRYPT', value: 'true' }
+          { name: 'SQL_TRUST_SERVER_CERTIFICATE', value: 'false' }
+          { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+          { name: 'ENTRA_CLIENT_ID', value: entraClientId }
+          { name: 'ENTRA_TENANT_ID', value: entraTenantId }
+          { name: 'ENTRA_CLIENT_SECRET', secretRef: 'entra-client-secret' }
+        ], sqlAuthMode == 'sql_login' ? [
+          { name: 'SQL_PASSWORD', secretRef: 'sql-password' }
+        ] : [])
+      }]
+    }
+  }
+}
 output containerAppFqdn string = app.properties.configuration.ingress.fqdn
 output acrLoginServer string = acr.properties.loginServer
+output migrationJobName string = enableMigrationJob ? migrationJob.name : ''
