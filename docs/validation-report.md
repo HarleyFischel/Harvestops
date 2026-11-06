@@ -9,7 +9,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `scripts/init-env.sh` was syntax-checked and exercised in a temporary directory; it generated a mode-600 `.env` secret and refused to overwrite an existing file.
 - `.venv312/bin/python -m pytest -q` passed: 41 tests, with 2 SQL integration tests skipped because no connection string was supplied.
 - Refreshed locked dependencies were installed into `.venv`; `PYTHON_BIN=.venv/bin/python ./scripts/test.sh` passed 41 tests with 2 SQL integration tests skipped, followed by passing Ruff lint and format checks. The security-sensitive pins now include PyJWT 2.14.0, cryptography 50.0.0, MCP 1.28.1, MSAL 1.39.0, and Pydantic 2.12.5.
-- `./scripts/verify-local.sh` passed with the same 40 passed / 2 skipped result and a redacted configuration summary; the script prefers an existing `.venv312` or `.venv` interpreter before host Python.
+- `./scripts/verify-local.sh` passed with 41 passed / 2 skipped and a redacted configuration summary; it also printed coherent seeded KPI output. The script prefers an existing `.venv312` or `.venv` interpreter before host Python.
 - ruff check . passed.
 - `ruff format --check .` passed after formatting the repository; CI now runs the same blocking format check.
 - `uvx --from pip-audit==2.9.0 pip-audit --strict` completed locally with `No known vulnerabilities found`.
