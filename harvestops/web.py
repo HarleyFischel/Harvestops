@@ -120,6 +120,7 @@ def shipments_view(store: InMemoryStore):
         html.Div([html.Div([html.Div("Execution board", className="page-kicker"), html.H1("Dock & shipment board"), html.P("Server-side rules protect each status transition and export.")]), html.A("Export CSV", href="/api/shipments/export", id="export-csv", className="button secondary")], className="page-heading"),
         html.Div([html.Div([html.Label("Customer"), dcc.Dropdown(id="ship-customer", options=[{"label": "All", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Exceptions only"), dcc.Checklist(id="ship-exceptions", options=[{"label": " Show exceptions", "value": "yes"}], className="check-control")], className="filter-control"), html.Div([html.Label("Server page"), dcc.Input(id="ship-page", type="number", min=1, value=1)], className="filter-control")], className="filter-row"),
         html.Div(id="shipment-alert", className="alert"),
+        dcc.ConfirmDialog(id="confirm-status", message="Apply this shipment status change?"),
         AgGrid(id="shipment-grid", columnDefs=[{"field": x, "headerName": x.replace("_", " ").title()} for x in ["shipment_id", "customer", "product", "facility", "carrier", "dock", "dock_appointment", "planned_departure", "actual_departure", "ordered_qty", "shipped_qty", "freight_cost", "status", "version"]], rowData=[], defaultColDef={"sortable": True, "filter": True, "resizable": True}, dashGridOptions={"animateRows": False, "pagination": False}, className="ag-theme-alpine", style={"height": "430px", "width": "100%"}),
         html.Div(id="shipment-page-info", className="section-subtitle"),
         dcc.Upload(id="shipment-import-upload", children=html.Div("Upload shipment CSV"), className="upload-control", multiple=False),
@@ -348,7 +349,11 @@ def make_app(settings: Settings | None = None):
         data = [{"shipment_id": r.shipment_id, "customer": r.customer, "product": r.product, "facility": r.facility, "carrier": r.carrier, "dock": r.dock, "dock_appointment": r.appointment_utc.isoformat(), "planned_departure": r.planned_departure_utc.isoformat(), "actual_departure": r.actual_departure_utc.isoformat() if r.actual_departure_utc else "", "ordered_qty": str(r.ordered_qty), "shipped_qty": str(r.shipped_qty), "freight_cost": str(r.freight_cost), "status": r.status, "version": r.version} for r in rows]
         return data, f"Page {min(page, max_page)} of {max_page} · {total} matching shipments"
 
-    @app.callback(Output("shipment-alert", "children"), Input("apply-status", "n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    @app.callback(Output("confirm-status", "displayed"), Input("apply-status", "n_clicks"), prevent_initial_call=True)
+    def ask_status_confirmation(n_clicks):
+        return bool(n_clicks)
+
+    @app.callback(Output("shipment-alert", "children"), Input("confirm-status", "submit_n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
     def apply_status(_, shipment_id, new_status, version, token, status_token):
         try:
             if not (valid_csrf(token) or valid_csrf(status_token)):

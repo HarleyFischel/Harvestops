@@ -49,6 +49,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.locator("#status-value").click()
         page.get_by_text("In Transit", exact=True).last.click()
         page.locator("#status-version").fill("1")
+        page.once("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Apply status").click()
         page.wait_for_function("() => document.querySelector('#shipment-alert')?.textContent.trim().length > 0")
         assert "Updated SHP-1004 to In Transit" in page.locator("#shipment-alert").inner_text()

@@ -12,7 +12,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
-- Playwright Chromium was installed and browser smoke passed 5 tests against the local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status plus purchase approval workflow, a 390px mobile viewport rendering check, and a visible keyboard/programmatic focus indicator check.
+- Playwright Chromium was installed and browser smoke passed 5 tests against the local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status workflow including confirmation, a purchase approval workflow, a 390px mobile viewport rendering check, and a visible keyboard/programmatic focus indicator check.
 - Legacy React sample passed `npm ci` and `npm run build`; production dependency audit reported no vulnerabilities. The isolated sample uses exact React/Vite pins and a package lock.
 - `uv lock` and a hash-pinned `requirements.lock` were generated; the production Dockerfile installs from the lock before installing the application package.
 - A temporary Redis 7 container verified the production-style `SESSION_REDIS_URL` mode, demo login, session-bound CSRF token, and readiness behavior; the temporary container was removed afterward.
