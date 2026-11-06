@@ -3,6 +3,10 @@ param appName string
 param image string
 param sqlServerFqdn string
 param sqlDatabase string = 'HarvestOps'
+@allowed([
+  'azure_identity'
+  'sql_login'
+])
 param sqlAuthMode string = 'azure_identity'
 param sqlUser string = ''
 param acrName string
