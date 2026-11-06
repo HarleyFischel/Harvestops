@@ -150,6 +150,25 @@ def test_production_requires_verified_sql_connections():
     assert "SQL_TRUST_SERVER_CERTIFICATE must be false in production" in errors
 
 
+def test_azure_identity_sql_mode_does_not_require_sql_password():
+    settings = Settings(
+        app_env="production",
+        demo_mode=False,
+        identity_mode="entra",
+        storage_mode="sqlserver",
+        sql_auth_mode="azure_identity",
+        secret_key="x" * 48,
+        sql_server="azure-sql.database.windows.net",
+        sql_database="HarvestOps",
+        azure_client_id="managed-identity-client-id",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+        session_redis_url="redis://localhost:6379/0",
+    )
+    assert settings.validate_for_runtime() == []
+
+
 def test_entra_layout_does_not_expose_demo_role_switch():
     settings = Settings(
         identity_mode="entra",

@@ -3,10 +3,11 @@ param appName string
 param image string
 param sqlServerFqdn string
 param sqlDatabase string = 'HarvestOps'
-param sqlUser string
+param sqlAuthMode string = 'azure_identity'
+param sqlUser string = ''
 param acrName string
 param keyVaultName string
-param sqlPasswordSecretUri string
+param sqlPasswordSecretUri string = ''
 param sessionRedisUrlSecretUri string
 param secretKeySecretUri string
 param entraClientSecretSecretUri string
@@ -64,36 +65,43 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
     configuration: {
       ingress: { external: true, targetPort: 8050, transport: 'http' }
       registries: [{ server: acr.properties.loginServer, identity: identity.id }]
-      secrets: [
-        { name: 'sql-password', keyVaultUrl: sqlPasswordSecretUri, identity: identity.id }
+      secrets: concat(
+        sqlAuthMode == 'sql_login' ? [
+          { name: 'sql-password', keyVaultUrl: sqlPasswordSecretUri, identity: identity.id }
+        ] : [],
+        [
         { name: 'session-redis-url', keyVaultUrl: sessionRedisUrlSecretUri, identity: identity.id }
         { name: 'secret-key', keyVaultUrl: secretKeySecretUri, identity: identity.id }
         { name: 'entra-client-secret', keyVaultUrl: entraClientSecretSecretUri, identity: identity.id }
-      ]
+        ]
+      )
     }
     template: {
       containers: [{
         name: 'harvestops'
         image: image
         resources: { cpu: json('0.5'), memory: '1Gi' }
-        env: [
+        env: concat([
           { name: 'APP_ENV', value: 'production' }
           { name: 'DEMO_MODE', value: 'false' }
           { name: 'STORAGE_MODE', value: 'sqlserver' }
           { name: 'IDENTITY_MODE', value: 'entra' }
+          { name: 'SQL_AUTH_MODE', value: sqlAuthMode }
           { name: 'SECRET_KEY', secretRef: 'secret-key' }
           { name: 'SQL_SERVER', value: sqlServerFqdn }
           { name: 'SQL_DATABASE', value: sqlDatabase }
           { name: 'SQL_USER', value: sqlUser }
           { name: 'SQL_ENCRYPT', value: 'true' }
           { name: 'SQL_TRUST_SERVER_CERTIFICATE', value: 'false' }
-          { name: 'SQL_PASSWORD', secretRef: 'sql-password' }
+          { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
           { name: 'SESSION_REDIS_URL', secretRef: 'session-redis-url' }
           { name: 'ENTRA_CLIENT_ID', value: entraClientId }
           { name: 'ENTRA_TENANT_ID', value: entraTenantId }
           { name: 'ENTRA_REDIRECT_URI', value: entraRedirectUri }
           { name: 'ENTRA_CLIENT_SECRET', secretRef: 'entra-client-secret' }
-        ]
+        ], sqlAuthMode == 'sql_login' ? [
+          { name: 'SQL_PASSWORD', secretRef: 'sql-password' }
+        ] : [])
         probes: [{ type: 'Readiness', httpGet: { path: '/readyz', port: 8050 }, initialDelaySeconds: 15, periodSeconds: 20 }]
       }]
       scale: { minReplicas: 0, maxReplicas: 3 }

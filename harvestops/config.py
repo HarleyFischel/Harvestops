@@ -12,11 +12,13 @@ class Settings(BaseSettings):
     identity_mode: str = "demo"
     sql_server: str = ""
     sql_database: str = "HarvestOps"
+    sql_auth_mode: str = "sql_login"
     sql_user: str = ""
     sql_password: str = ""
     sql_encrypt: bool = True
     sql_trust_server_certificate: bool = False
     sql_connection_timeout: int = 5
+    azure_client_id: str = ""
     session_redis_url: str = ""
     entra_client_id: str = ""
     entra_client_secret: str = ""
@@ -50,9 +52,17 @@ class Settings(BaseSettings):
                 if not getattr(self, name):
                     errors.append(f"{name.upper()} is required for Entra mode")
         if self.storage_mode == "sqlserver":
-            for name in ("sql_server", "sql_database", "sql_user", "sql_password"):
+            for name in ("sql_server", "sql_database"):
                 if not getattr(self, name):
                     errors.append(f"{name.upper()} is required for SQL Server mode")
+            if self.sql_auth_mode not in {"sql_login", "azure_identity"}:
+                errors.append("SQL_AUTH_MODE must be sql_login or azure_identity")
+            elif self.sql_auth_mode == "sql_login":
+                for name in ("sql_user", "sql_password"):
+                    if not getattr(self, name):
+                        errors.append(f"{name.upper()} is required for SQL login mode")
+            elif self.app_env == "production" and not self.azure_client_id:
+                errors.append("AZURE_CLIENT_ID is required for production Azure identity SQL mode")
         if self.app_env == "production" and not self.session_redis_url:
             errors.append("SESSION_REDIS_URL is required for production server-side sessions")
         return errors

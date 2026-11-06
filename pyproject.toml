@@ -22,6 +22,7 @@ dependencies = [
   "msal==1.39.0",
   "mcp==1.28.1",
   "redis==5.2.1",
+  "azure-identity==1.25.1",
 ]
 
 [project.optional-dependencies]

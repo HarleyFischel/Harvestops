@@ -12,13 +12,15 @@ class SqlServerRepository:
     def connection_string(self) -> str:
         trust = "yes" if self.settings.sql_trust_server_certificate else "no"
         encrypt = "yes" if self.settings.sql_encrypt else "no"
-        return (
+        connection = (
             "DRIVER={ODBC Driver 18 for SQL Server};"
             f"SERVER={self.settings.sql_server};DATABASE={self.settings.sql_database};"
-            f"UID={self.settings.sql_user};PWD={self.settings.sql_password};"
             f"Encrypt={encrypt};TrustServerCertificate={trust};"
             f"Connection Timeout={self.settings.sql_connection_timeout};"
         )
+        if self.settings.sql_auth_mode == "sql_login":
+            connection += f"UID={self.settings.sql_user};PWD={self.settings.sql_password};"
+        return connection
 
     def ping(self) -> bool:
         with self.connect() as conn:
@@ -28,6 +30,18 @@ class SqlServerRepository:
     def connect(self):
         import pyodbc
 
+        if self.settings.sql_auth_mode == "azure_identity":
+            import struct
+
+            from azure.identity import DefaultAzureCredential
+
+            credential = DefaultAzureCredential(
+                managed_identity_client_id=self.settings.azure_client_id or None
+            )
+            token = credential.get_token("https://database.windows.net/.default").token
+            token_bytes = token.encode("utf-16-le")
+            access_token = struct.pack(f"<I{len(token_bytes)}s", len(token_bytes), token_bytes)
+            return pyodbc.connect(self.connection_string(), attrs_before={1256: access_token})
         return pyodbc.connect(self.connection_string())
 
     @staticmethod

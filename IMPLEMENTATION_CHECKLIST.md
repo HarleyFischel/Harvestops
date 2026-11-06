@@ -22,6 +22,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] SQL Server/Azure SQL schema, migrations, seed, views, and workflow stored procedure
 - [x] Staging import table/procedure and ADF mapping template
 - [x] pyodbc repository with parameterized SQL and UTC policy
+- [x] SQL login mode for external SQL Server and Azure SQL managed-identity access-token mode
 - [x] CSV validation/import with idempotency, staging semantics, and audit trail
 - [x] Knowledge search with permission filtering and optional Claude adapter boundary
 - [x] Signed-token exchange example with JOSE validation and replay store

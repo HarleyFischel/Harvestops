@@ -22,6 +22,14 @@ attrs==26.1.0 \
     # via
     #   jsonschema
     #   referencing
+azure-core==1.41.0 \
+    --hash=sha256:522b4011e8180b1a3dcd2024396a4e7fe9ac37fb8597db47163d230b5efe892d \
+    --hash=sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a
+    # via azure-identity
+azure-identity==1.25.1 \
+    --hash=sha256:87ca8328883de6036443e1c37b40e8dc8fb74898240f61071e09d2e369361456 \
+    --hash=sha256:e9edd720af03dff020223cd269fa3a61e8f345ea75443858273bcb44844ab651
+    # via harvestops
 blinker==1.9.0 \
     --hash=sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf \
     --hash=sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc
@@ -193,6 +201,7 @@ cryptography==50.0.0 \
     --hash=sha256:f89831ef99dd7dd169ab06d63a831adb9e20a87aac6d380266bbda5823349169 \
     --hash=sha256:fd9192b7b70c573d7f214eb1ae35e00d359f6f5e4b27c7e21e30de1fc6204645
     # via
+    #   azure-identity
     #   harvestops
     #   msal
     #   pyjwt
@@ -340,7 +349,14 @@ mcp==1.28.1 \
 msal==1.39.0 \
     --hash=sha256:2d2577886906cd7293850dffa2da29119966c213bfc6ec0cecf8bf7621e1ca77 \
     --hash=sha256:6ab7de335e6d7f5717e2c7e1dbf86e4dda2f6acf3c56773b78dc53ebc6395b5f
-    # via harvestops
+    # via
+    #   azure-identity
+    #   harvestops
+    #   msal-extensions
+msal-extensions==1.3.1 \
+    --hash=sha256:96d3de4d034504e969ac5e85bae8106c8373b5c6568e4c8fa7af2eca9dbe6bca \
+    --hash=sha256:c5b0fd10f65ef62b5f1d62f4251d51cbcaf003fcedae8c91b040a488614be1a4
+    # via azure-identity
 msgspec==0.22.0 \
     --hash=sha256:024138c51afd335d0b4dce401be33902caafac2b64f8c9f2509a378986175d98 \
     --hash=sha256:0739b068f31f2004a364f97679ba91f2f5ecd6ec2a5b4b890188ab5c57d20672 \
@@ -529,6 +545,7 @@ requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
+    #   azure-core
     #   dash
     #   msal
 retrying==1.4.2 \
@@ -632,6 +649,8 @@ typing-extensions==4.16.0 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
     # via
     #   anyio
+    #   azure-core
+    #   azure-identity
     #   dash
     #   mcp
     #   pydantic

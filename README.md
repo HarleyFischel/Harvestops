@@ -25,7 +25,7 @@ Open the repository in GitHub Codespaces. The devcontainer installs dependencies
 The M2 Mac application image is ARM64 and uses an external database:
 
     ./scripts/init-env.sh
-    # Set STORAGE_MODE=sqlserver and SQL_SERVER to the x86-64 Linux/Proxmox host.
+    # Set STORAGE_MODE=sqlserver, SQL_AUTH_MODE=sql_login, and SQL_SERVER to the x86-64 Linux/Proxmox host.
     docker compose -f compose.mac.yml up --build
 
 No SQL Server emulation is required or started on the Mac. The SQL Server Developer container is only in the x86-64 stack:
@@ -45,6 +45,7 @@ Stop and restart Compose services with `docker compose -f compose.x86.yml stop` 
 - CSV ingestion: validation, rejected rows, idempotent repeats, run history, and synthetic sample.
 - Demo identity plus fail-closed Entra/MSAL adapter; secure session cookie settings.
 - SQL Server/Azure SQL migrations, seed data, view, stored procedure pattern, schema/data dictionary, and pyodbc adapter.
+- External SQL login mode plus Azure SQL managed-identity access-token mode; production SQL connections require encryption and certificate verification.
 - Read-only official MCP SDK tools, signed-token exchange example, React legacy lookup, benchmark harness, Compose, Codespaces, GitHub Actions, and Azure Container Apps Bicep.
 
 AG Grid Community is the only required grid feature. Enterprise features are not used.

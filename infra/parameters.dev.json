@@ -5,6 +5,7 @@
     "appName": { "value": "harvestops-dev" },
     "image": { "value": "replace-with-immutable-acr-image-digest" },
     "sqlServerFqdn": { "value": "replace-with-existing-sql-server.database.windows.net" },
+    "sqlAuthMode": { "value": "sql_login" },
     "sqlUser": { "value": "harvestops_app" },
     "acrName": { "value": "replacewithuniqueacrname" },
     "keyVaultName": { "value": "replace-with-existing-key-vault" },
