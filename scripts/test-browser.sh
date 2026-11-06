@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ -z "${PYTHON_BIN:-}" ]]; then
-  for candidate in .venv312/bin/python .venv/bin/python; do
+  for candidate in .venv/bin/python .venv312/bin/python; do
     if [[ -x "$candidate" ]]; then PYTHON_BIN="$candidate"; break; fi
   done
 fi

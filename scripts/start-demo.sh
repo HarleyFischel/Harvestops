@@ -4,7 +4,7 @@ export APP_ENV="${APP_ENV:-development}"
 export DEMO_MODE="${DEMO_MODE:-true}"
 export STORAGE_MODE="${STORAGE_MODE:-demo}"
 if [[ -z "${PYTHON_BIN:-}" ]]; then
-  for candidate in .venv312/bin/python .venv/bin/python; do
+  for candidate in .venv/bin/python .venv312/bin/python; do
     if [[ -x "$candidate" ]]; then PYTHON_BIN="$candidate"; break; fi
   done
 fi

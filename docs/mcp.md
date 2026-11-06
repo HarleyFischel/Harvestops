@@ -6,6 +6,15 @@ HarvestOps includes a small read-only MCP server using the official Python SDK. 
 python -m harvestops.mcp_server
 ```
 
+Run the bounded local protocol smoke test with:
+
+```bash
+./scripts/test-mcp-stdio.sh
+```
+
+It performs an `initialize`, `tools/list`, and authenticated demo-mode `tools/call`
+for `SHP-1004`. It does not claim a remote MCP deployment.
+
 The tools are `lookup_shipment`, `list_shipment_exceptions`, and `approved_kpi_definitions`. Each local call requires a known demo principal, validates bounded inputs, reuses the service-layer shipment and knowledge objects, and applies a result limit. The local tests cover successful lookup, exception limits, input validation, and unknown-principal rejection.
 
 The server selects `InMemoryStore` for the explicit demo mode and `SqlServerStore` when `STORAGE_MODE=sqlserver`, so exposed deployments use the same parameterized SQL adapter as the Dash application. Apply migrations separately before starting the MCP process.
