@@ -86,6 +86,21 @@ def test_import_is_idempotent_and_reports_invalid_rows():
     assert second["applied"] == 0
 
 
+def test_import_freshness_reports_seed_then_latest_run():
+    store = InMemoryStore()
+    assert store.import_freshness()["status"] == "Seeded"
+    operator = store.users["demo.operator"]
+    result = store.import_shipments(
+        "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status\n"
+        "SHP-2098,City Market,Spring Mix,Salinas,GreenLine,D-07,2026-03-02T15:00:00Z,500,500,875,Scheduled\n",
+        operator,
+    )
+    freshness = store.import_freshness()
+    assert freshness["status"] == "Completed"
+    assert freshness["applied"] == result["applied"] == 1
+    assert freshness["occurred_utc"] == result["occurred_utc"]
+
+
 def test_import_rejects_malformed_record_without_raising():
     store = InMemoryStore()
     operator = store.users["demo.operator"]

@@ -132,6 +132,18 @@ class InMemoryStore:
     def export_shipments(self) -> list[dict]:
         return [{"shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "status": row.status, "freight_cost": row.freight_cost} for row in self.shipments.values()]
 
+    def import_freshness(self) -> dict:
+        if not self.import_runs:
+            return {"source": "synthetic seed", "status": "Seeded", "occurred_utc": "2026-03-03T15:00:00+00:00", "applied": 0, "errors": 0}
+        run = self.import_runs[-1]
+        return {
+            "source": "shipment-update.csv",
+            "status": "Completed",
+            "occurred_utc": run["occurred_utc"],
+            "applied": run["applied"],
+            "errors": len(run["errors"]),
+        }
+
     def list_purchases(self, actor: User | None) -> list[PurchaseRequest]:
         if not actor:
             return []

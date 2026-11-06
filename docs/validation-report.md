@@ -7,8 +7,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
 - `scripts/init-env.sh` was syntax-checked and exercised in a temporary directory; it generated a mode-600 `.env` secret and refused to overwrite an existing file.
-- `.venv312/bin/python -m pytest -q` passed: 37 tests, with 2 SQL integration tests skipped because no connection string was supplied.
-- `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 37 passed / 2 skipped result and a redacted configuration summary.
+- `.venv312/bin/python -m pytest -q` passed: 38 tests, with 2 SQL integration tests skipped because no connection string was supplied.
+- `./scripts/verify-local.sh` passed with the same 38 passed / 2 skipped result and a redacted configuration summary; the script prefers an existing `.venv312` or `.venv` interpreter before host Python.
 - ruff check . passed.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
@@ -24,6 +24,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
 - SQL shipment imports now stage parsed rows in `staging.shipment_updates` and execute the versioned validation/apply procedure before reporting applied and rejected rows; this implementation path is not live-connection verified.
+- The shipment board now displays import freshness (source, status, UTC timestamp, applied count, and rejected count) for both demo and SQL stores and refreshes it after a successful upload; the demo freshness transition is covered by a service test.
 - Production configuration now fails closed unless storage is SQL Server, SQL encryption is enabled, and `TrustServerCertificate` is disabled; structured log formatting redacts common secret-shaped key/value messages.
 - SQL migrations 003–007 add the shipment-status and staged-import procedures/tables, pending-purchase/knowledge seed records, and SQL/demo seed-departure alignment; procedure execution is pending the external SQL Server gate.
 - The deterministic local retrieval evaluation passed 4/4 exact-source checks; see `docs/retrieval-evaluation.md`.

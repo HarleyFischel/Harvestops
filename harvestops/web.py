@@ -100,6 +100,10 @@ def csv_safe(value) -> str:
     return "'" + text if text.startswith(("=", "+", "-", "@")) else text
 
 
+def freshness_text(metadata: dict) -> str:
+    return f"Data freshness · {metadata['source']} · {metadata['status']} · {metadata['occurred_utc']} UTC · {metadata['applied']} applied · {metadata['errors']} rejected"
+
+
 def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
     return html.Div([
@@ -117,6 +121,7 @@ def shipments_view(store: InMemoryStore):
         html.Div([html.Div([html.Div("Execution board", className="page-kicker"), html.H1("Dock & shipment board"), html.P("Server-side rules protect each status transition and export.")]), html.A("Export CSV", href="/api/shipments/export", id="export-csv", className="button secondary")], className="page-heading"),
         html.Div([html.Div([html.Label("Customer"), dcc.Dropdown(id="ship-customer", options=[{"label": "All", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Exceptions only"), dcc.Checklist(id="ship-exceptions", options=[{"label": " Show exceptions", "value": "yes"}], className="check-control")], className="filter-control"), html.Div([html.Label("Server page"), dcc.Input(id="ship-page", type="number", min=1, value=1)], className="filter-control")], className="filter-row"),
         html.Div(id="shipment-alert", className="alert"),
+        html.Div(freshness_text(store.import_freshness()), id="import-freshness", className="freshness-note", role="status"),
         dcc.ConfirmDialog(id="confirm-status", message="Apply this shipment status change?"),
         AgGrid(id="shipment-grid", columnDefs=[{"field": x, "headerName": x.replace("_", " ").title()} for x in ["shipment_id", "customer", "product", "facility", "carrier", "dock", "dock_appointment", "planned_departure", "actual_departure", "ordered_qty", "shipped_qty", "freight_cost", "status", "version"]], rowData=[], defaultColDef={"sortable": True, "filter": True, "resizable": True}, dashGridOptions={"animateRows": False, "pagination": False}, className="ag-theme-alpine", style={"height": "430px", "width": "100%"}),
         html.Div(id="shipment-page-info", className="section-subtitle"),
@@ -361,7 +366,7 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not apply change: {exc}"
 
-    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Output("import-freshness", "children"), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
     def import_from_upload(contents, filename, token, status_token):
         try:
             import base64
@@ -370,11 +375,13 @@ def make_app(settings: Settings | None = None):
             user = current_user(store)
             if not user or not user.roles.intersection({"operator", "admin"}):
                 raise PermissionError("Operator role required")
+            if not contents:
+                raise ValueError("CSV content is required")
             _, encoded = contents.split(",", 1)
             result = store.import_shipments(base64.b64decode(encoded).decode("utf-8"), user)
-            return f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC."
+            return f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC.", freshness_text(store.import_freshness())
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
-            return f"Import failed: {exc}"
+            return f"Import failed: {exc}", no_update
 
     @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
     def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version, token, status_token):

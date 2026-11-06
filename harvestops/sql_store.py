@@ -44,6 +44,23 @@ class SqlServerStore:
         rows = self.repository.query("SELECT shipment_id, customer_name AS customer, product_name AS product, status, freight_cost FROM dbo.v_shipment_board ORDER BY planned_departure_utc")
         return rows
 
+    def import_freshness(self) -> dict:
+        rows = self.repository.query(
+            "SELECT TOP (1) source_name, status, started_utc, completed_utc, applied_count, rejected_count "
+            "FROM dbo.import_runs ORDER BY import_run_id DESC"
+        )
+        if not rows:
+            return {"source": "synthetic seed", "status": "Seeded", "occurred_utc": "unknown", "applied": 0, "errors": 0}
+        row = rows[0]
+        occurred = row["completed_utc"] or row["started_utc"]
+        return {
+            "source": row["source_name"],
+            "status": row["status"],
+            "occurred_utc": occurred.replace(tzinfo=timezone.utc).isoformat(),
+            "applied": int(row["applied_count"]),
+            "errors": int(row["rejected_count"]),
+        }
+
     def kpis(self, filters: dict) -> dict:
         shipment = self.repository.shipment_kpis(filters)
         production = self.repository.production_kpis(filters)
