@@ -5,8 +5,15 @@
     "appName": { "value": "harvestops-dev" },
     "image": { "value": "replace-with-immutable-acr-image-digest" },
     "sqlServerFqdn": { "value": "replace-with-existing-sql-server.database.windows.net" },
+    "sqlUser": { "value": "harvestops_app" },
     "acrName": { "value": "replacewithuniqueacrname" },
+    "keyVaultName": { "value": "replace-with-existing-key-vault" },
     "sqlPasswordSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-sql-password" },
-    "sessionRedisUrlSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-session-redis-url" }
+    "sessionRedisUrlSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-session-redis-url" },
+    "secretKeySecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-secret-key" },
+    "entraClientSecretSecretUri": { "value": "https://replace-with-key-vault.vault.azure.net/secrets/harvestops-entra-client-secret" },
+    "entraClientId": { "value": "replace-with-entra-client-id" },
+    "entraTenantId": { "value": "replace-with-entra-tenant-id" },
+    "entraRedirectUri": { "value": "https://replace-with-app-host/auth/callback" }
   }
 }

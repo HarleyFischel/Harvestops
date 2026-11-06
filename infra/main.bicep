@@ -3,9 +3,16 @@ param appName string
 param image string
 param sqlServerFqdn string
 param sqlDatabase string = 'HarvestOps'
+param sqlUser string
 param acrName string
+param keyVaultName string
 param sqlPasswordSecretUri string
 param sessionRedisUrlSecretUri string
+param secretKeySecretUri string
+param entraClientSecretSecretUri string
+param entraClientId string
+param entraTenantId string
+param entraRedirectUri string
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: '${appName}-logs'
@@ -27,11 +34,23 @@ resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' 
   name: '${appName}-identity'
   location: location
 }
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: keyVaultName
+}
 resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(acr.id, identity.id, 'AcrPull')
   scope: acr
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+resource keyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, identity.id, 'Key Vault Secrets User')
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-044c5c86b69e6')
     principalId: identity.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -48,6 +67,8 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
       secrets: [
         { name: 'sql-password', keyVaultUrl: sqlPasswordSecretUri, identity: identity.id }
         { name: 'session-redis-url', keyVaultUrl: sessionRedisUrlSecretUri, identity: identity.id }
+        { name: 'secret-key', keyVaultUrl: secretKeySecretUri, identity: identity.id }
+        { name: 'entra-client-secret', keyVaultUrl: entraClientSecretSecretUri, identity: identity.id }
       ]
     }
     template: {
@@ -59,12 +80,19 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
           { name: 'APP_ENV', value: 'production' }
           { name: 'DEMO_MODE', value: 'false' }
           { name: 'STORAGE_MODE', value: 'sqlserver' }
+          { name: 'IDENTITY_MODE', value: 'entra' }
+          { name: 'SECRET_KEY', secretRef: 'secret-key' }
           { name: 'SQL_SERVER', value: sqlServerFqdn }
           { name: 'SQL_DATABASE', value: sqlDatabase }
+          { name: 'SQL_USER', value: sqlUser }
           { name: 'SQL_ENCRYPT', value: 'true' }
           { name: 'SQL_TRUST_SERVER_CERTIFICATE', value: 'false' }
           { name: 'SQL_PASSWORD', secretRef: 'sql-password' }
           { name: 'SESSION_REDIS_URL', secretRef: 'session-redis-url' }
+          { name: 'ENTRA_CLIENT_ID', value: entraClientId }
+          { name: 'ENTRA_TENANT_ID', value: entraTenantId }
+          { name: 'ENTRA_REDIRECT_URI', value: entraRedirectUri }
+          { name: 'ENTRA_CLIENT_SECRET', secretRef: 'entra-client-secret' }
         ]
         probes: [{ type: 'Readiness', httpGet: { path: '/readyz', port: 8050 }, initialDelaySeconds: 15, periodSeconds: 20 }]
       }]
