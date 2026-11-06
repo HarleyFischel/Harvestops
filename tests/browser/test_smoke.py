@@ -61,3 +61,17 @@ def test_keyboard_focus_indicator_is_visible():
         button.focus()
         assert button.evaluate("element => getComputedStyle(element).outlineStyle") == "solid"
         browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_dashboard_controls_use_compact_dimensions():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
+        radio = page.locator(".nav-list input[type='radio']").first
+        radio_box = radio.bounding_box()
+        dropdown_box = page.locator(".filter-control .Select-control").first.bounding_box()
+        assert radio_box is not None and radio_box["width"] <= 24 and radio_box["height"] <= 24
+        assert dropdown_box is not None and dropdown_box["height"] <= 42
+        browser.close()
