@@ -185,3 +185,50 @@ class SqlServerRepository:
             params,
         )
         return rows[0]
+
+    def dashboard_volume(self, filters: dict) -> list[dict]:
+        where, params = self._shipment_filter(filters)
+        return self.query(
+            f"""SELECT facility_name AS label, COALESCE(SUM(shipped_qty), 0) AS shipped_qty
+                FROM dbo.v_shipment_board
+                WHERE {where}
+                GROUP BY facility_name
+                ORDER BY facility_name""",
+            params,
+        )
+
+    def dashboard_service(self, filters: dict) -> dict:
+        where, params = self._shipment_filter(filters)
+        rows = self.query(
+            f"""SELECT COUNT_BIG(*) AS shipment_count,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL
+                                           AND status <> 'Cancelled'
+                                           AND actual_departure_utc <= planned_departure_utc
+                                        THEN 1 ELSE 0 END), 0) AS on_time
+                FROM dbo.v_shipment_board
+                WHERE {where}""",
+            params,
+        )
+        row = rows[0]
+        return {
+            "on_time": int(row["on_time"]),
+            "late_open": int(row["shipment_count"]) - int(row["on_time"]),
+        }
+
+    def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[dict]:
+        where, params = self._shipment_filter(filters)
+        limit = max(1, min(int(limit), 100))
+        params.append(limit)
+        return self.query(
+            f"""SELECT shipment_id, customer_name, product_name, facility_name, carrier_name,
+                       dock_code, appointment_utc, planned_departure_utc, actual_departure_utc,
+                       ordered_qty, shipped_qty, freight_cost, status, row_version
+                FROM dbo.v_shipment_board
+                WHERE {where}
+                  AND (status = 'Exception'
+                       OR (actual_departure_utc IS NOT NULL AND actual_departure_utc > planned_departure_utc)
+                       OR (ordered_qty > 0 AND shipped_qty / ordered_qty < CAST(0.95 AS decimal(3,2))))
+                ORDER BY planned_departure_utc, shipment_id
+                OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY""",
+            params,
+        )

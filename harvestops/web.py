@@ -871,16 +871,17 @@ def make_app(settings: Settings | None = None):
                 "Output ÷ labor hours",
             ),
         ]
-        rows, _ = store.list_shipments(filters, 1, 100)
+        volume_rows = store.dashboard_volume(filters)
+        service_counts = store.dashboard_service(filters)
         volume = go.Figure(
             go.Bar(
-                x=[r.shipment_id for r in rows],
-                y=[float(r.shipped_qty) for r in rows],
+                x=[row["label"] for row in volume_rows],
+                y=[float(row["shipped_qty"]) for row in volume_rows],
                 marker_color="#0f766e",
             )
         )
         volume.update_layout(
-            title="Shipped quantity by load",
+            title="Shipped quantity by facility",
             height=300,
             margin={"l": 30, "r": 20, "t": 55, "b": 30},
             plot_bgcolor="white",
@@ -889,7 +890,7 @@ def make_app(settings: Settings | None = None):
         service = go.Figure(
             go.Pie(
                 labels=["On time", "Late / open"],
-                values=[sum(1 for r in rows if r.on_time), sum(1 for r in rows if not r.on_time)],
+                values=[service_counts["on_time"], service_counts["late_open"]],
                 hole=0.65,
                 marker_colors=["#2f855a", "#f59e0b"],
             )
@@ -902,13 +903,7 @@ def make_app(settings: Settings | None = None):
             paper_bgcolor="white",
             showlegend=True,
         )
-        exceptions = [
-            r
-            for r in rows
-            if r.status == "Exception"
-            or (r.actual_departure_utc and not r.on_time)
-            or r.fill_rate < 0.95
-        ]
+        exceptions = store.shipment_exceptions(filters)
         table = dash_table.DataTable(
             data=[
                 {

@@ -367,6 +367,32 @@ class InMemoryStore:
             else 0,
         }
 
+    def dashboard_volume(self, filters: dict) -> list[dict]:
+        rows, _ = self.list_shipments(filters, 1, 10_000)
+        totals: dict[str, Decimal] = {}
+        for row in rows:
+            totals[row.facility] = totals.get(row.facility, Decimal("0")) + row.shipped_qty
+        return [
+            {"label": facility, "shipped_qty": float(totals[facility])}
+            for facility in sorted(totals)
+        ]
+
+    def dashboard_service(self, filters: dict) -> dict[str, int]:
+        rows, _ = self.list_shipments(filters, 1, 10_000)
+        on_time = sum(1 for row in rows if row.on_time)
+        return {"on_time": on_time, "late_open": len(rows) - on_time}
+
+    def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[Shipment]:
+        rows, _ = self.list_shipments(filters, 1, 10_000)
+        exceptions = [
+            row
+            for row in rows
+            if row.status == "Exception"
+            or (row.actual_departure_utc and not row.on_time)
+            or row.fill_rate < 0.95
+        ]
+        return exceptions[: max(1, min(limit, 100))]
+
     @staticmethod
     def _filter_date(value: str | None):
         if not value:

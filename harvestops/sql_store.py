@@ -155,6 +155,15 @@ class SqlServerStore:
             else 0,
         }
 
+    def dashboard_volume(self, filters: dict) -> list[dict]:
+        return self.repository.dashboard_volume(filters)
+
+    def dashboard_service(self, filters: dict) -> dict[str, int]:
+        return self.repository.dashboard_service(filters)
+
+    def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[Shipment]:
+        return [self._shipment(row) for row in self.repository.shipment_exceptions(filters, limit)]
+
     def change_status(
         self, shipment_id: str, new_status: str, actor: User, expected_version: int
     ) -> Shipment:

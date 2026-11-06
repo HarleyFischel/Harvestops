@@ -22,6 +22,19 @@ def test_dashboard_date_scope_applies_to_shipments_and_production_metrics():
     assert kpis["labor_productivity"] > 0
 
 
+def test_dashboard_chart_and_exception_scopes_match_filtered_kpis():
+    store = InMemoryStore()
+    filters = {"customer": "Harvest Grocers"}
+    kpis = store.kpis(filters)
+    volume = store.dashboard_volume(filters)
+    service = store.dashboard_service(filters)
+    exceptions = store.shipment_exceptions(filters)
+
+    assert sum(row["shipped_qty"] for row in volume) == 2280
+    assert service["on_time"] + service["late_open"] == kpis["shipment_volume"]
+    assert all(row.customer == "Harvest Grocers" for row in exceptions)
+
+
 def test_unauthorized_status_change_is_rejected():
     store = InMemoryStore()
     with pytest.raises(PermissionError):
