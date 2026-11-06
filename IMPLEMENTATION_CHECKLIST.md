@@ -14,6 +14,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Demo authentication with server-side role checks
 - [x] Health/readiness endpoints and startup diagnostics
 - [x] SQL Server-backed service adapter selected by STORAGE_MODE=sqlserver
+- [x] Viewer-protected shipment detail endpoint with current optimistic-concurrency version
 - [x] Shipment CSV upload/API workflow with validation, idempotency, and CSRF token check
 
 ## Milestone 2 — data, security, and tests
@@ -44,7 +45,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Docker daemon and ARM64/AMD64 image builds verified
 - [x] Python unit and service tests pass
 - [x] Demo-mode runtime smoke test passes
-- [x] Browser smoke test passes against the local demo server
+- [x] Browser smoke test passes against the local demo server (6 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests
 - [~] Full x86 SQL Server Compose runtime, migration, persistence, and backup/restore exercise pending on the intended x86-64 host
 - [~] Azure deployment validation is configuration-only until credentials are supplied
