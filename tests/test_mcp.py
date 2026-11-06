@@ -5,11 +5,27 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+import harvestops.mcp_server as mcp_module
+from harvestops.config import Settings
 from harvestops.mcp_server import (
     approved_kpi_definitions,
     list_shipment_exceptions,
     lookup_shipment,
 )
+
+
+def test_mcp_store_selection_uses_sql_adapter_when_configured(monkeypatch):
+    settings = Settings(
+        storage_mode="sqlserver",
+        sql_server="sql.example",
+        sql_database="HarvestOps",
+        sql_user="app",
+        sql_password="secret",
+    )
+    sentinel = object()
+    monkeypatch.setattr(mcp_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(mcp_module, "SqlServerStore", lambda received: sentinel)
+    assert mcp_module.build_store() is sentinel
 
 
 def test_mcp_tools_require_principal_and_limit_results():

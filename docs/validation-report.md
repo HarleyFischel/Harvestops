@@ -7,8 +7,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
 - `scripts/init-env.sh` was syntax-checked and exercised in a temporary directory; it generated a mode-600 `.env` secret and refused to overwrite an existing file.
-- `.venv312/bin/python -m pytest -q` passed: 39 tests, with 2 SQL integration tests skipped because no connection string was supplied.
-- `./scripts/verify-local.sh` passed with the same 39 passed / 2 skipped result and a redacted configuration summary; the script prefers an existing `.venv312` or `.venv` interpreter before host Python.
+- `.venv312/bin/python -m pytest -q` passed: 40 tests, with 2 SQL integration tests skipped because no connection string was supplied.
+- `./scripts/verify-local.sh` passed with the same 40 passed / 2 skipped result and a redacted configuration summary; the script prefers an existing `.venv312` or `.venv` interpreter before host Python.
 - ruff check . passed.
 - `ruff format --check .` passed after formatting the repository; CI now runs the same blocking format check.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
@@ -36,7 +36,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Dashboard KPI scope now includes planned-departure date range and seeded production-run/labor records; the date-scope service test passed.
 - Entra identity claims are reconstructed from the server-side session for multi-worker requests; direct unauthenticated Dash requests, CSRF-protected demo account switching, and cross-user purchasing reads have negative coverage.
 - Portal-token tests cover RS256 tampering, expiry, issuer/audience, single-use replay, and the Redis-backed atomic replay-store option; external Redis deployment is not verified.
-- MCP store selection now follows `STORAGE_MODE`, keeping local demo calls on synthetic data while routing configured SQL deployments through `SqlServerStore`; local MCP tests still pass and no remote MCP deployment is claimed.
+- MCP store selection now follows `STORAGE_MODE`, keeping local demo calls on synthetic data while routing configured SQL deployments through `SqlServerStore`; the selection branch is directly covered by local tests and no remote MCP deployment is claimed.
 - Source includes separate ARM64 Mac app Compose, x86-64 SQL Server Compose, Codespaces setup, SQL migrations, production Dockerfile, GitHub Actions, Bicep, MCP, token exchange, benchmark, and legacy example.
 
 ## Pending or unverified
