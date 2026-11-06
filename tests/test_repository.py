@@ -45,6 +45,33 @@ def test_sql_login_connection_string_quotes_punctuation_in_credentials():
     assert "PWD={p;word}}};" in connection
 
 
+def test_shipment_filter_parameterizes_dimensions_and_utc_date_scope():
+    where, params = SqlServerRepository._shipment_filter(
+        {
+            "customer": "FreshMart Northeast",
+            "product": "Romaine Hearts",
+            "facility": "Salinas",
+            "start_date": "2026-01-01",
+            "end_date": "2026-01-31",
+            "exceptions_only": True,
+        }
+    )
+    assert "customer_name = ?" in where
+    assert "product_name = ?" in where
+    assert "facility_name = ?" in where
+    assert "planned_departure_utc >= CAST(? AS date)" in where
+    assert "planned_departure_utc < DATEADD(day, 1, CAST(? AS date))" in where
+    assert "status = ?" in where
+    assert params == [
+        "FreshMart Northeast",
+        "Romaine Hearts",
+        "Salinas",
+        "2026-01-01",
+        "2026-01-31",
+        "Exception",
+    ]
+
+
 def test_database_bootstrap_only_accepts_safe_identifiers():
     assert quote_database_name("HarvestOps_2026") == "[HarvestOps_2026]"
     with pytest.raises(ValueError):
