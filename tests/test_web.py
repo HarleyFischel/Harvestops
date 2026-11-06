@@ -271,6 +271,37 @@ def test_demo_account_switch_requires_csrf_after_session_exists():
     )
 
 
+def test_direct_dash_write_callback_without_csrf_does_not_mutate_state():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    assert client.post("/auth/demo", json={"username": "demo.operator"}).status_code == 200
+    client.delete_cookie("harvestops_csrf")
+
+    payload = {
+        "output": "shipment-alert.children",
+        "outputs": {"id": "shipment-alert", "property": "children"},
+        "inputs": [{"id": "confirm-status", "property": "submit_n_clicks", "value": 1}],
+        "state": [
+            {"id": "status-shipment-id", "property": "value", "value": "SHP-1004"},
+            {"id": "status-value", "property": "value", "value": "In Transit"},
+            {"id": "status-version", "property": "value", "value": 1},
+            {"id": "csrf-token", "property": "data", "value": ""},
+            {"id": "csrf-status", "property": "data-csrf-token", "value": ""},
+        ],
+        "changedPropIds": ["confirm-status.submit_n_clicks"],
+    }
+
+    response = client.post("/_dash-update-component", json=payload)
+    assert response.status_code == 200
+    assert response.get_json()["response"]["shipment-alert"]["children"] == (
+        "Could not apply change: CSRF token required"
+    )
+
+    detail = client.get("/api/shipments/SHP-1004")
+    assert detail.get_json()["status"] == "Scheduled"
+    assert detail.get_json()["version"] == 1
+
+
 def test_import_endpoint_is_authorized_and_idempotent():
     app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
     client = app.server.test_client()
