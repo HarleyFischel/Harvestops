@@ -20,23 +20,26 @@ cleanup() {
 }
 trap cleanup EXIT
 
+wait_for_ready() {
+  for _ in $(seq 1 30); do
+    if curl --fail --silent "$HARVESTOPS_URL/healthz" >/dev/null 2>&1 \
+      && curl --fail --silent "$HARVESTOPS_URL/readyz" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 if ! curl --fail --silent "$HARVESTOPS_URL/healthz" >/dev/null 2>&1; then
   APP_ENV=development DEMO_MODE=true STORAGE_MODE=demo IDENTITY_MODE=demo \
     "$PYTHON_BIN" -m harvestops.web >"$log_file" 2>&1 &
   started_pid=$!
-  ready=false
-  for _ in $(seq 1 30); do
-    if curl --fail --silent "$HARVESTOPS_URL/healthz" >/dev/null 2>&1; then
-      ready=true
-      break
-    fi
-    sleep 1
-  done
-  if [[ "$ready" != true ]]; then
-    cat "$log_file"
-    printf '%s\n' 'HarvestOps did not become ready.' >&2
-    exit 1
-  fi
+fi
+if ! wait_for_ready; then
+  [[ -z "$started_pid" ]] || cat "$log_file"
+  printf '%s\n' 'HarvestOps did not become healthy and ready.' >&2
+  exit 1
 fi
 
 PYTHON_BIN="$PYTHON_BIN" ./scripts/verify-local.sh
