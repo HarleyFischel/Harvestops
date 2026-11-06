@@ -35,6 +35,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Dashboard KPI scope now includes planned-departure date range and seeded production-run/labor records; the date-scope service test passed.
 - Entra identity claims are reconstructed from the server-side session for multi-worker requests; direct unauthenticated Dash requests, CSRF-protected demo account switching, and cross-user purchasing reads have negative coverage.
 - Portal-token tests cover RS256 tampering, expiry, issuer/audience, single-use replay, and the Redis-backed atomic replay-store option; external Redis deployment is not verified.
+- MCP store selection now follows `STORAGE_MODE`, keeping local demo calls on synthetic data while routing configured SQL deployments through `SqlServerStore`; local MCP tests still pass and no remote MCP deployment is claimed.
 - Source includes separate ARM64 Mac app Compose, x86-64 SQL Server Compose, Codespaces setup, SQL migrations, production Dockerfile, GitHub Actions, Bicep, MCP, token exchange, benchmark, and legacy example.
 
 ## Pending or unverified

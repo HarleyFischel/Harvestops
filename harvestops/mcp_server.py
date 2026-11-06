@@ -5,12 +5,21 @@ import os
 import jwt
 from mcp.server.fastmcp import FastMCP
 
+from .config import get_settings
 from .domain import User
 from .knowledge import KnowledgeService
 from .services import InMemoryStore
+from .sql_store import SqlServerStore
 
 mcp = FastMCP("HarvestOps read-only operations")
-store = InMemoryStore()
+
+
+def build_store():
+    settings = get_settings()
+    return SqlServerStore(settings) if settings.storage_mode == "sqlserver" else InMemoryStore()
+
+
+store = build_store()
 knowledge = KnowledgeService()
 
 
