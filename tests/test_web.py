@@ -248,6 +248,25 @@ def test_entra_routes_are_closed_in_demo_mode():
     )
 
 
+def test_entra_callback_rejects_invalid_state_before_redeeming_code():
+    settings = Settings(
+        secret_key="test",
+        demo_mode=False,
+        identity_mode="entra",
+        storage_mode="demo",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+    )
+    app = make_app(settings)
+    client = app.server.test_client()
+    with client.session_transaction() as session:
+        session["entra_state"] = "expected-state"
+    response = client.get("/auth/callback?state=wrong-state&code=unused")
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid identity state"
+
+
 def test_dash_surface_redirects_unauthenticated_entra_requests():
     settings = Settings(
         identity_mode="entra",
