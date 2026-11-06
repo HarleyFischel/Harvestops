@@ -17,12 +17,17 @@ def test_health_and_readiness():
 
 
 def test_structured_log_formatter_emits_safe_json():
-    record = logging.LogRecord("harvestops.test", logging.INFO, __file__, 1, "workflow %s", ("ok",), None)
+    record = logging.LogRecord(
+        "harvestops.test", logging.INFO, __file__, 1, "workflow %s", ("ok",), None
+    )
     payload = json.loads(JsonFormatter().format(record))
     assert payload["logger"] == "harvestops.test"
     assert payload["message"] == "workflow ok"
     assert payload["timestamp"].endswith("+00:00")
-    assert redact_message("password=topsecret token: abc123") == "password=[REDACTED] token: [REDACTED]"
+    assert (
+        redact_message("password=topsecret token: abc123")
+        == "password=[REDACTED] token: [REDACTED]"
+    )
 
 
 def test_export_requires_operator_role():
@@ -40,15 +45,21 @@ def test_export_prefixes_formula_like_cells():
     client = app.server.test_client()
     client.post("/auth/demo", json={"username": "demo.operator"})
     # Mutate only this test's isolated demo store through its closure-backed service.
-    store = next(cell.cell_contents for cell in app.server.view_functions["export_shipments"].__closure__ if hasattr(cell.cell_contents, "shipments"))
-    store.shipments["SHP-1001"].customer = "=HYPERLINK(\"https://example.test\")"
+    store = next(
+        cell.cell_contents
+        for cell in app.server.view_functions["export_shipments"].__closure__
+        if hasattr(cell.cell_contents, "shipments")
+    )
+    store.shipments["SHP-1001"].customer = '=HYPERLINK("https://example.test")'
     response = client.get("/api/shipments/export")
     assert "'=HYPERLINK" in response.text
 
 
 def test_demo_identity_cannot_be_enabled_in_production():
     try:
-        make_app(Settings(secret_key="test", app_env="production", demo_mode=True, storage_mode="demo"))
+        make_app(
+            Settings(secret_key="test", app_env="production", demo_mode=True, storage_mode="demo")
+        )
     except RuntimeError as exc:
         assert "DEMO_MODE" in str(exc)
     else:
@@ -57,7 +68,11 @@ def test_demo_identity_cannot_be_enabled_in_production():
 
 def test_production_rejects_demo_identity_even_when_demo_mode_is_false():
     try:
-        make_app(Settings(app_env="production", demo_mode=False, storage_mode="demo", identity_mode="demo"))
+        make_app(
+            Settings(
+                app_env="production", demo_mode=False, storage_mode="demo", identity_mode="demo"
+            )
+        )
     except RuntimeError as exc:
         assert "IDENTITY_MODE" in str(exc)
     else:
@@ -65,7 +80,15 @@ def test_production_rejects_demo_identity_even_when_demo_mode_is_false():
 
 
 def test_production_requires_server_side_session_backend():
-    settings = Settings(app_env="production", demo_mode=False, storage_mode="demo", identity_mode="entra", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant")
+    settings = Settings(
+        app_env="production",
+        demo_mode=False,
+        storage_mode="demo",
+        identity_mode="entra",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+    )
     try:
         make_app(settings)
     except RuntimeError as exc:
@@ -75,7 +98,16 @@ def test_production_requires_server_side_session_backend():
 
 
 def test_production_rejects_default_secret():
-    settings = Settings(app_env="production", demo_mode=False, identity_mode="entra", storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant", session_redis_url="redis://localhost:6379/0")
+    settings = Settings(
+        app_env="production",
+        demo_mode=False,
+        identity_mode="entra",
+        storage_mode="demo",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+        session_redis_url="redis://localhost:6379/0",
+    )
     try:
         make_app(settings)
     except RuntimeError as exc:
@@ -108,13 +140,31 @@ def test_production_requires_verified_sql_connections():
 
 
 def test_entra_layout_does_not_expose_demo_role_switch():
-    settings = Settings(identity_mode="entra", demo_mode=False, storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant", session_redis_url="redis://localhost:6379/0")
+    settings = Settings(
+        identity_mode="entra",
+        demo_mode=False,
+        storage_mode="demo",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+        session_redis_url="redis://localhost:6379/0",
+    )
     app = make_app(settings)
     assert "role-switch" not in str(app.layout())
 
 
 def test_session_claims_reconstruct_entra_principal_across_workers():
-    app = make_app(Settings(secret_key="test", demo_mode=False, identity_mode="entra", storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant"))
+    app = make_app(
+        Settings(
+            secret_key="test",
+            demo_mode=False,
+            identity_mode="entra",
+            storage_mode="demo",
+            entra_client_id="client",
+            entra_client_secret="secret",
+            entra_tenant_id="tenant",
+        )
+    )
     client = app.server.test_client()
     with client.session_transaction() as session:
         session["username"] = "entra.user@example.test"
@@ -135,17 +185,29 @@ def test_required_grid_and_purchase_callbacks_exist():
 
 
 def test_entra_routes_are_closed_in_demo_mode():
-    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo", identity_mode="demo"))
+    app = make_app(
+        Settings(secret_key="test", demo_mode=True, storage_mode="demo", identity_mode="demo")
+    )
     client = app.server.test_client()
     assert client.get("/auth/login").status_code == 403
     client.post("/auth/demo", json={"username": "demo.viewer"})
     assert client.post("/auth/logout").status_code == 403
     token = client.get("/api/csrf").get_json()["csrf_token"]
-    assert client.post("/auth/logout", headers={"X-CSRF-Token": token}).get_json()["status"] == "signed_out"
+    assert (
+        client.post("/auth/logout", headers={"X-CSRF-Token": token}).get_json()["status"]
+        == "signed_out"
+    )
 
 
 def test_dash_surface_redirects_unauthenticated_entra_requests():
-    settings = Settings(identity_mode="entra", demo_mode=False, storage_mode="demo", entra_client_id="client", entra_client_secret="secret", entra_tenant_id="tenant")
+    settings = Settings(
+        identity_mode="entra",
+        demo_mode=False,
+        storage_mode="demo",
+        entra_client_id="client",
+        entra_client_secret="secret",
+        entra_tenant_id="tenant",
+    )
     app = make_app(settings)
     client = app.server.test_client()
     response = client.get("/", follow_redirects=False)
@@ -169,7 +231,12 @@ def test_demo_account_switch_requires_csrf_after_session_exists():
     assert client.get("/").status_code == 200
     assert client.post("/auth/demo", json={"username": "demo.operator"}).status_code == 403
     token = client.get("/api/csrf").get_json()["csrf_token"]
-    assert client.post("/auth/demo", json={"username": "demo.operator"}, headers={"X-CSRF-Token": token}).status_code == 200
+    assert (
+        client.post(
+            "/auth/demo", json={"username": "demo.operator"}, headers={"X-CSRF-Token": token}
+        ).status_code
+        == 200
+    )
 
 
 def test_import_endpoint_is_authorized_and_idempotent():

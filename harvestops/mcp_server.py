@@ -1,4 +1,5 @@
 """Read-only MCP example using the official MCP Python SDK."""
+
 import os
 
 import jwt
@@ -39,7 +40,14 @@ def _require_principal(principal: str, auth_token: str = ""):
             header = jwt.get_unverified_header(auth_token)
             if header.get("alg") != "RS256":
                 raise PermissionError("MCP token algorithm rejected")
-            claims = jwt.decode(auth_token, public_key, algorithms=["RS256"], issuer=issuer, audience=audience, options={"require": ["exp", "nbf", "iat", "iss", "aud", "sub"]})
+            claims = jwt.decode(
+                auth_token,
+                public_key,
+                algorithms=["RS256"],
+                issuer=issuer,
+                audience=audience,
+                options={"require": ["exp", "nbf", "iat", "iss", "aud", "sub"]},
+            )
         except (jwt.PyJWTError, ValueError) as exc:
             raise PermissionError("verified MCP authentication is required") from exc
         if claims.get("sub") != principal:
@@ -65,7 +73,16 @@ def lookup_shipment(shipment_id: str, principal: str, auth_token: str = "") -> d
     row = store.get_shipment(shipment_id)
     if not row:
         return {"found": False}
-    return {"found": True, "shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "facility": row.facility, "status": row.status, "ordered_qty": str(row.ordered_qty), "shipped_qty": str(row.shipped_qty)}
+    return {
+        "found": True,
+        "shipment_id": row.shipment_id,
+        "customer": row.customer,
+        "product": row.product,
+        "facility": row.facility,
+        "status": row.status,
+        "ordered_qty": str(row.ordered_qty),
+        "shipped_qty": str(row.shipped_qty),
+    }
 
 
 @mcp.tool()
@@ -73,7 +90,15 @@ def list_shipment_exceptions(principal: str, limit: int = 20, auth_token: str = 
     _require_principal(principal, auth_token)
     limit = _bounded_limit(limit)
     rows, _ = store.list_shipments({"exceptions_only": True}, 1, limit)
-    return [{"shipment_id": row.shipment_id, "status": row.status, "customer": row.customer, "fill_rate": round(row.fill_rate, 4)} for row in rows]
+    return [
+        {
+            "shipment_id": row.shipment_id,
+            "status": row.status,
+            "customer": row.customer,
+            "fill_rate": round(row.fill_rate, 4),
+        }
+        for row in rows
+    ]
 
 
 @mcp.tool()

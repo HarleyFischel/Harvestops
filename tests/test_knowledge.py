@@ -14,7 +14,10 @@ def test_local_search_is_permission_filtered():
 
 
 def test_claude_mode_is_graceful_without_credentials():
-    result = KnowledgeService().answer_with_claude("What is fill rate?", KnowledgeService().search("fill rate", User("v", "Viewer", {"viewer"})))
+    result = KnowledgeService().answer_with_claude(
+        "What is fill rate?",
+        KnowledgeService().search("fill rate", User("v", "Viewer", {"viewer"})),
+    )
     assert result["status"] == "unavailable"
     assert "Local search" in result["message"]
 

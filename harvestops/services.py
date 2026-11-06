@@ -28,7 +28,9 @@ class InMemoryStore:
             "demo.viewer": User("demo.viewer", "Demo Viewer", {"viewer"}),
             "demo.operator": User("demo.operator", "Demo Operator", {"viewer", "operator"}),
             "demo.approver": User("demo.approver", "Demo Approver", {"viewer", "approver"}),
-            "demo.admin": User("demo.admin", "Demo Admin", {"viewer", "operator", "approver", "admin"}),
+            "demo.admin": User(
+                "demo.admin", "Demo Admin", {"viewer", "operator", "approver", "admin"}
+            ),
         }
         self.shipments = self._seed_shipments()
         self.production_runs = self._seed_production_runs()
@@ -41,20 +43,146 @@ class InMemoryStore:
     def _seed_shipments() -> dict[str, Shipment]:
         base = datetime(2026, 1, 5, 13, tzinfo=timezone.utc)
         rows = [
-            ("SHP-1001", "FreshMart Northeast", "Romaine Hearts", "Salinas", "GreenLine", "D-01", 1200, 1200, 1820, "Delivered", 0),
-            ("SHP-1002", "Harvest Grocers", "Baby Spinach", "Yuma", "Westway", "D-04", 900, 780, 1440, "Exception", 3),
-            ("SHP-1003", "City Market", "Spring Mix", "Salinas", "GreenLine", "D-02", 1500, 1500, 2100, "In Transit", 7),
-            ("SHP-1004", "FreshMart Northeast", "Iceberg Lettuce", "Oxnard", "NorthStar", "D-03", 1100, 1100, 1750, "Scheduled", 10),
-            ("SHP-1005", "Harvest Grocers", "Romaine Hearts", "Salinas", "Westway", "D-05", 800, 800, 1290, "Delivered", 35),
-            ("SHP-1006", "City Market", "Baby Spinach", "Yuma", "NorthStar", "D-01", 1000, 920, 1605, "Exception", 38),
-            ("SHP-1007", "FreshMart Northeast", "Spring Mix", "Oxnard", "GreenLine", "D-02", 1300, 1300, 1980, "Delivered", 42),
-            ("SHP-1008", "Harvest Grocers", "Iceberg Lettuce", "Salinas", "Westway", "D-06", 700, 700, 1180, "Cancelled", 56),
+            (
+                "SHP-1001",
+                "FreshMart Northeast",
+                "Romaine Hearts",
+                "Salinas",
+                "GreenLine",
+                "D-01",
+                1200,
+                1200,
+                1820,
+                "Delivered",
+                0,
+            ),
+            (
+                "SHP-1002",
+                "Harvest Grocers",
+                "Baby Spinach",
+                "Yuma",
+                "Westway",
+                "D-04",
+                900,
+                780,
+                1440,
+                "Exception",
+                3,
+            ),
+            (
+                "SHP-1003",
+                "City Market",
+                "Spring Mix",
+                "Salinas",
+                "GreenLine",
+                "D-02",
+                1500,
+                1500,
+                2100,
+                "In Transit",
+                7,
+            ),
+            (
+                "SHP-1004",
+                "FreshMart Northeast",
+                "Iceberg Lettuce",
+                "Oxnard",
+                "NorthStar",
+                "D-03",
+                1100,
+                1100,
+                1750,
+                "Scheduled",
+                10,
+            ),
+            (
+                "SHP-1005",
+                "Harvest Grocers",
+                "Romaine Hearts",
+                "Salinas",
+                "Westway",
+                "D-05",
+                800,
+                800,
+                1290,
+                "Delivered",
+                35,
+            ),
+            (
+                "SHP-1006",
+                "City Market",
+                "Baby Spinach",
+                "Yuma",
+                "NorthStar",
+                "D-01",
+                1000,
+                920,
+                1605,
+                "Exception",
+                38,
+            ),
+            (
+                "SHP-1007",
+                "FreshMart Northeast",
+                "Spring Mix",
+                "Oxnard",
+                "GreenLine",
+                "D-02",
+                1300,
+                1300,
+                1980,
+                "Delivered",
+                42,
+            ),
+            (
+                "SHP-1008",
+                "Harvest Grocers",
+                "Iceberg Lettuce",
+                "Salinas",
+                "Westway",
+                "D-06",
+                700,
+                700,
+                1180,
+                "Cancelled",
+                56,
+            ),
         ]
         result = {}
-        for sid, customer, product, facility, carrier, dock, ordered, shipped, freight, status, days in rows:
+        for (
+            sid,
+            customer,
+            product,
+            facility,
+            carrier,
+            dock,
+            ordered,
+            shipped,
+            freight,
+            status,
+            days,
+        ) in rows:
             planned = base + timedelta(days=days, hours=2)
-            actual = None if status in {"Scheduled", "Cancelled"} else planned + timedelta(hours=2 if "1002" in sid or "1006" in sid else -1)
-            result[sid] = Shipment(sid, customer, product, facility, carrier, dock, planned - timedelta(hours=2), planned, actual, Decimal(ordered), Decimal(shipped), Decimal(freight), status)
+            actual = (
+                None
+                if status in {"Scheduled", "Cancelled"}
+                else planned + timedelta(hours=2 if "1002" in sid or "1006" in sid else -1)
+            )
+            result[sid] = Shipment(
+                sid,
+                customer,
+                product,
+                facility,
+                carrier,
+                dock,
+                planned - timedelta(hours=2),
+                planned,
+                actual,
+                Decimal(ordered),
+                Decimal(shipped),
+                Decimal(freight),
+                status,
+            )
         return result
 
     @staticmethod
@@ -98,13 +226,41 @@ class InMemoryStore:
             2,
         )
         self.purchases.update({rejected.request_id: rejected, pending.request_id: pending})
-        self.audit.extend([
-            AuditEvent("seed-purchase-created", "demo.operator", "purchase.created", "purchase_request", rejected.request_id, {"total": str(rejected.total)}, seeded_at),
-            AuditEvent("seed-purchase-rejected", "demo.approver", "purchase.rejected", "purchase_request", rejected.request_id, {"comment": rejected.comment}, seeded_at),
-            AuditEvent("seed-purchase-pending", "demo.operator", "purchase.submitted", "purchase_request", pending.request_id, {}, seeded_at),
-        ])
+        self.audit.extend(
+            [
+                AuditEvent(
+                    "seed-purchase-created",
+                    "demo.operator",
+                    "purchase.created",
+                    "purchase_request",
+                    rejected.request_id,
+                    {"total": str(rejected.total)},
+                    seeded_at,
+                ),
+                AuditEvent(
+                    "seed-purchase-rejected",
+                    "demo.approver",
+                    "purchase.rejected",
+                    "purchase_request",
+                    rejected.request_id,
+                    {"comment": rejected.comment},
+                    seeded_at,
+                ),
+                AuditEvent(
+                    "seed-purchase-pending",
+                    "demo.operator",
+                    "purchase.submitted",
+                    "purchase_request",
+                    pending.request_id,
+                    {},
+                    seeded_at,
+                ),
+            ]
+        )
 
-    def list_shipments(self, filters: dict, page: int = 1, page_size: int = 25) -> tuple[list[Shipment], int]:
+    def list_shipments(
+        self, filters: dict, page: int = 1, page_size: int = 25
+    ) -> tuple[list[Shipment], int]:
         rows = list(self.shipments.values())
         for field in ("customer", "product", "facility"):
             value = filters.get(field)
@@ -124,17 +280,35 @@ class InMemoryStore:
         return rows[start : start + page_size], total
 
     def filter_options(self) -> dict[str, list[str]]:
-        return {field: sorted({getattr(row, field) for row in self.shipments.values()}) for field in ("customer", "product", "facility")}
+        return {
+            field: sorted({getattr(row, field) for row in self.shipments.values()})
+            for field in ("customer", "product", "facility")
+        }
 
     def get_shipment(self, shipment_id: str) -> Shipment | None:
         return self.shipments.get(shipment_id)
 
     def export_shipments(self) -> list[dict]:
-        return [{"shipment_id": row.shipment_id, "customer": row.customer, "product": row.product, "status": row.status, "freight_cost": row.freight_cost} for row in self.shipments.values()]
+        return [
+            {
+                "shipment_id": row.shipment_id,
+                "customer": row.customer,
+                "product": row.product,
+                "status": row.status,
+                "freight_cost": row.freight_cost,
+            }
+            for row in self.shipments.values()
+        ]
 
     def import_freshness(self) -> dict:
         if not self.import_runs:
-            return {"source": "synthetic seed", "status": "Seeded", "occurred_utc": "2026-03-03T15:00:00+00:00", "applied": 0, "errors": 0}
+            return {
+                "source": "synthetic seed",
+                "status": "Seeded",
+                "occurred_utc": "2026-03-03T15:00:00+00:00",
+                "applied": 0,
+                "errors": 0,
+            }
         run = self.import_runs[-1]
         return {
             "source": "shipment-update.csv",
@@ -149,11 +323,17 @@ class InMemoryStore:
             return []
         if actor.roles.intersection({"approver", "admin"}):
             return list(self.purchases.values())
-        return [request for request in self.purchases.values() if request.requester == actor.username]
+        return [
+            request for request in self.purchases.values() if request.requester == actor.username
+        ]
 
     def purchase_history(self, actor: User | None) -> list[AuditEvent]:
         visible = {request.request_id for request in self.list_purchases(actor)}
-        return [event for event in self.audit if event.entity_type == "purchase_request" and event.entity_id in visible]
+        return [
+            event
+            for event in self.audit
+            if event.entity_type == "purchase_request" and event.entity_id in visible
+        ]
 
     def kpis(self, filters: dict) -> dict:
         rows, _ = self.list_shipments(filters, 1, 10_000)
@@ -164,7 +344,13 @@ class InMemoryStore:
         keys = {(row.facility, row.product) for row in rows}
         start_date = self._filter_date(filters.get("start_date"))
         end_date = self._filter_date(filters.get("end_date"))
-        production = [run for run in self.production_runs if (run["facility"], run["product"]) in keys and (not start_date or run["run_date"].date() >= start_date) and (not end_date or run["run_date"].date() <= end_date)]
+        production = [
+            run
+            for run in self.production_runs
+            if (run["facility"], run["product"]) in keys
+            and (not start_date or run["run_date"].date() >= start_date)
+            and (not end_date or run["run_date"].date() <= end_date)
+        ]
         production_output = sum((run["output_qty"] for run in production), Decimal(0))
         labor_hours = sum((run["labor_hours"] for run in production), Decimal(0))
         return {
@@ -173,7 +359,9 @@ class InMemoryStore:
             "fill_rate": (float(total_shipped / total_ordered) * 100) if total_ordered else 0,
             "freight_cost": float(sum((r.freight_cost for r in rows), Decimal(0))),
             "production_output": int(production_output),
-            "labor_productivity": round(float(production_output / labor_hours), 1) if labor_hours else 0,
+            "labor_productivity": round(float(production_output / labor_hours), 1)
+            if labor_hours
+            else 0,
         }
 
     @staticmethod
@@ -185,7 +373,9 @@ class InMemoryStore:
         except ValueError as exc:
             raise DomainError("Date filters must use YYYY-MM-DD") from exc
 
-    def change_status(self, shipment_id: str, new_status: str, actor: User, expected_version: int) -> Shipment:
+    def change_status(
+        self, shipment_id: str, new_status: str, actor: User, expected_version: int
+    ) -> Shipment:
         if not actor:
             raise PermissionError("Authenticated user required")
         if "operator" not in actor.roles and "admin" not in actor.roles:
@@ -196,13 +386,25 @@ class InMemoryStore:
         if not shipment:
             raise DomainError("Shipment not found")
         if shipment.version != expected_version:
-            raise DomainError("Shipment is stale; it changed since it was loaded; refresh before editing")
+            raise DomainError(
+                "Shipment is stale; it changed since it was loaded; refresh before editing"
+            )
         if new_status not in ALLOWED_TRANSITIONS[shipment.status]:
             raise DomainError(f"Cannot change {shipment.status} to {new_status}")
         old = shipment.status
         shipment.status = new_status
         shipment.version += 1
-        self.audit.append(AuditEvent(secrets.token_hex(8), actor.username, "shipment.status_changed", "shipment", shipment_id, {"from": old, "to": new_status}, utc_now()))
+        self.audit.append(
+            AuditEvent(
+                secrets.token_hex(8),
+                actor.username,
+                "shipment.status_changed",
+                "shipment",
+                shipment_id,
+                {"from": old, "to": new_status},
+                utc_now(),
+            )
+        )
         return shipment
 
     def create_purchase(self, requester: User, facility: str, lines: list[dict]) -> PurchaseRequest:
@@ -220,12 +422,31 @@ class InMemoryStore:
             if qty <= 0 or cost < 0:
                 raise DomainError("Quantity must be positive and cost cannot be negative")
             parsed.append(PurchaseLine(str(line["product"])[:80], qty, cost))
-        request = PurchaseRequest(f"PR-{len(self.purchases) + 1001}", requester.username, facility, "Draft", utc_now(), lines=parsed)
+        request = PurchaseRequest(
+            f"PR-{len(self.purchases) + 1001}",
+            requester.username,
+            facility,
+            "Draft",
+            utc_now(),
+            lines=parsed,
+        )
         self.purchases[request.request_id] = request
-        self.audit.append(AuditEvent(secrets.token_hex(8), requester.username, "purchase.created", "purchase_request", request.request_id, {"total": str(request.total)}, utc_now()))
+        self.audit.append(
+            AuditEvent(
+                secrets.token_hex(8),
+                requester.username,
+                "purchase.created",
+                "purchase_request",
+                request.request_id,
+                {"total": str(request.total)},
+                utc_now(),
+            )
+        )
         return request
 
-    def submit_purchase(self, request_id: str, actor: User, expected_version: int) -> PurchaseRequest:
+    def submit_purchase(
+        self, request_id: str, actor: User, expected_version: int
+    ) -> PurchaseRequest:
         if not actor:
             raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
@@ -237,10 +458,22 @@ class InMemoryStore:
             raise DomainError("Only draft requests can be submitted")
         request.status = "Pending"
         request.version += 1
-        self.audit.append(AuditEvent(secrets.token_hex(8), actor.username, "purchase.submitted", "purchase_request", request_id, {}, utc_now()))
+        self.audit.append(
+            AuditEvent(
+                secrets.token_hex(8),
+                actor.username,
+                "purchase.submitted",
+                "purchase_request",
+                request_id,
+                {},
+                utc_now(),
+            )
+        )
         return request
 
-    def decide_purchase(self, request_id: str, actor: User, decision: str, comment: str, expected_version: int) -> PurchaseRequest:
+    def decide_purchase(
+        self, request_id: str, actor: User, decision: str, comment: str, expected_version: int
+    ) -> PurchaseRequest:
         if not actor:
             raise PermissionError("Authenticated user required")
         request = self._purchase(request_id)
@@ -252,8 +485,22 @@ class InMemoryStore:
             raise DomainError("Request is stale or not pending")
         if decision not in {"Approved", "Rejected"}:
             raise DomainError("Decision must be Approved or Rejected")
-        request.status, request.comment, request.version = decision, comment[:500], request.version + 1
-        self.audit.append(AuditEvent(secrets.token_hex(8), actor.username, f"purchase.{decision.lower()}", "purchase_request", request_id, {"comment": request.comment}, utc_now()))
+        request.status, request.comment, request.version = (
+            decision,
+            comment[:500],
+            request.version + 1,
+        )
+        self.audit.append(
+            AuditEvent(
+                secrets.token_hex(8),
+                actor.username,
+                f"purchase.{decision.lower()}",
+                "purchase_request",
+                request_id,
+                {"comment": request.comment},
+                utc_now(),
+            )
+        )
         return request
 
     def _purchase(self, request_id: str) -> PurchaseRequest:
@@ -277,20 +524,63 @@ class InMemoryStore:
             try:
                 qty = Decimal(row["ordered_qty"])
                 shipped = Decimal(row["shipped_qty"])
-                planned = datetime.fromisoformat(row["planned_departure_utc"].replace("Z", "+00:00"))
+                planned = datetime.fromisoformat(
+                    row["planned_departure_utc"].replace("Z", "+00:00")
+                )
                 status = row.get("status", "Scheduled")
                 freight = Decimal(row.get("freight_cost", "0"))
-                required = tuple((row.get(field) or "").strip() for field in ("customer", "product", "facility", "carrier"))
-                if not all(required) or planned.tzinfo is None or qty <= 0 or shipped < 0 or shipped > qty or freight < 0 or status not in STATUSES:
+                required = tuple(
+                    (row.get(field) or "").strip()
+                    for field in ("customer", "product", "facility", "carrier")
+                )
+                if (
+                    not all(required)
+                    or planned.tzinfo is None
+                    or qty <= 0
+                    or shipped < 0
+                    or shipped > qty
+                    or freight < 0
+                    or status not in STATUSES
+                ):
                     raise ValueError
             except (KeyError, InvalidOperation, ValueError):
                 errors.append({"line": line_no, "error": "invalid shipment record"})
                 continue
             planned = planned.astimezone(timezone.utc)
             dock = (row.get("dock") or "D-01").strip()
-            self.shipments[sid] = Shipment(sid, required[0], required[1], required[2], required[3], dock, planned - timedelta(hours=2), planned, None, qty, shipped, freight, status)
+            self.shipments[sid] = Shipment(
+                sid,
+                required[0],
+                required[1],
+                required[2],
+                required[3],
+                dock,
+                planned - timedelta(hours=2),
+                planned,
+                None,
+                qty,
+                shipped,
+                freight,
+                status,
+            )
             applied += 1
-        run = {"run_id": f"IMP-{len(self.import_runs)+1:04}", "actor": actor.username, "applied": applied, "errors": errors, "occurred_utc": utc_now().isoformat()}
+        run = {
+            "run_id": f"IMP-{len(self.import_runs)+1:04}",
+            "actor": actor.username,
+            "applied": applied,
+            "errors": errors,
+            "occurred_utc": utc_now().isoformat(),
+        }
         self.import_runs.append(run)
-        self.audit.append(AuditEvent(secrets.token_hex(8), actor.username, "shipment.import", "import_run", run["run_id"], run, utc_now()))
+        self.audit.append(
+            AuditEvent(
+                secrets.token_hex(8),
+                actor.username,
+                "shipment.import",
+                "import_run",
+                run["run_id"],
+                run,
+                utc_now(),
+            )
+        )
         return run

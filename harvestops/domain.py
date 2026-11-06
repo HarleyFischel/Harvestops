@@ -38,7 +38,10 @@ class Shipment:
 
     @property
     def on_time(self) -> bool:
-        return self.actual_departure_utc is not None and self.actual_departure_utc <= self.planned_departure_utc
+        return (
+            self.actual_departure_utc is not None
+            and self.actual_departure_utc <= self.planned_departure_utc
+        )
 
 
 @dataclass

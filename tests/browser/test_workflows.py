@@ -36,8 +36,13 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
 
         def login_demo(username):
-            token = page.evaluate("""async () => (await fetch('/api/csrf')).json().then(payload => payload.csrf_token)""")
-            status = page.evaluate("""async ({username, token}) => (await fetch('/auth/demo', {method: 'POST', headers: {'content-type': 'application/json', 'X-CSRF-Token': token}, body: JSON.stringify({username})})).status""", {"username": username, "token": token})
+            token = page.evaluate(
+                """async () => (await fetch('/api/csrf')).json().then(payload => payload.csrf_token)"""
+            )
+            status = page.evaluate(
+                """async ({username, token}) => (await fetch('/auth/demo', {method: 'POST', headers: {'content-type': 'application/json', 'X-CSRF-Token': token}, body: JSON.stringify({username})})).status""",
+                {"username": username, "token": token},
+            )
             assert status == 200
             page.reload(wait_until="networkidle")
             page.locator("#csrf-status").get_by_text("ready").wait_for()
@@ -51,7 +56,9 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.locator("#status-version").fill("1")
         page.once("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Apply status").click()
-        page.wait_for_function("() => document.querySelector('#shipment-alert')?.textContent.trim().length > 0")
+        page.wait_for_function(
+            "() => document.querySelector('#shipment-alert')?.textContent.trim().length > 0"
+        )
         assert "Updated SHP-1004 to In Transit" in page.locator("#shipment-alert").inner_text()
 
         page.locator("label").filter(has_text="Purchasing approvals").click()
@@ -78,5 +85,8 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.locator("#decision-version").fill("2")
         page.get_by_role("button", name="Record decision").click()
         alert.get_by_text(re.compile("approved decision")).wait_for()
-        assert page.locator("#purchase-history").get_by_text(re.compile("purchase.approved")).count() >= 1
+        assert (
+            page.locator("#purchase-history").get_by_text(re.compile("purchase.approved")).count()
+            >= 1
+        )
         browser.close()

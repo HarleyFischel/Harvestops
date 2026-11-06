@@ -61,38 +61,109 @@ def require_role(store: InMemoryStore, *roles):
             if not user or not user.roles.intersection(roles):
                 return jsonify({"error": "forbidden"}), 403
             return fn(*args, **kwargs)
+
         return wrapped
+
     return decorator
 
 
 def build_layout(store: InMemoryStore, settings: Settings):
     demo_identity = settings.demo_mode and settings.identity_mode == "demo"
-    return html.Div([
-        dcc.Location(id="url"),
-        dcc.Store(id="active-user", data="demo.viewer"),
-        dcc.Store(id="csrf-token", data=csrf_token() if has_request_context() else None),
-        html.Div(id="csrf-status", className="visually-hidden", role="status", **{"data-csrf-token": ""}),
-        html.Header([
-            html.Div([html.Div("HARVESTOPS", className="brand"), html.Div("Produce operations control plane", className="tagline")], className="brand-lockup"),
-            html.Div([html.Span("SYNTHETIC DATA · DEMO MODE" if demo_identity else "SYNTHETIC DATA · ENTRA IDENTITY", className="demo-pill"), html.Span(id="user-label", className="user-label")], className="header-meta"),
-        ], className="topbar"),
-        html.Main([
-            html.Aside([
-                html.Div("WORKSPACE", className="eyebrow"),
-                dcc.RadioItems(id="nav", options=[
-                    {"label": "Operations dashboard", "value": "dashboard"},
-                    {"label": "Dock & shipment board", "value": "shipments"},
-                    {"label": "Purchasing approvals", "value": "purchasing"},
-                    {"label": "Knowledge assistant", "value": "knowledge"},
-                ], value="dashboard", className="nav-list", labelClassName="nav-item"),
-                html.Div("DEMO ACCOUNT", className="eyebrow side-space") if demo_identity else html.Div("IDENTITY", className="eyebrow side-space"),
-                dcc.Dropdown(id="role-switch", options=[{"label": u.display_name, "value": u.username} for u in store.users.values()], value="demo.viewer", clearable=False) if demo_identity else html.A("Sign in with Microsoft Entra ID", href="/auth/login", className="button secondary"),
-                html.Div("Role changes are development-only and enforced server-side.", className="side-note") if demo_identity else html.Div("Roles are mapped from Entra app-role claims.", className="side-note"),
-            ], className="sidebar"),
-            html.Section(id="page-content", className="content"),
-        ], className="shell"),
-        html.Footer("UTC storage · display timezone: " + settings.display_timezone + " · Portfolio application with synthetic data", className="footer"),
-    ], className="app-shell")
+    return html.Div(
+        [
+            dcc.Location(id="url"),
+            dcc.Store(id="active-user", data="demo.viewer"),
+            dcc.Store(id="csrf-token", data=csrf_token() if has_request_context() else None),
+            html.Div(
+                id="csrf-status",
+                className="visually-hidden",
+                role="status",
+                **{"data-csrf-token": ""},
+            ),
+            html.Header(
+                [
+                    html.Div(
+                        [
+                            html.Div("HARVESTOPS", className="brand"),
+                            html.Div("Produce operations control plane", className="tagline"),
+                        ],
+                        className="brand-lockup",
+                    ),
+                    html.Div(
+                        [
+                            html.Span(
+                                "SYNTHETIC DATA · DEMO MODE"
+                                if demo_identity
+                                else "SYNTHETIC DATA · ENTRA IDENTITY",
+                                className="demo-pill",
+                            ),
+                            html.Span(id="user-label", className="user-label"),
+                        ],
+                        className="header-meta",
+                    ),
+                ],
+                className="topbar",
+            ),
+            html.Main(
+                [
+                    html.Aside(
+                        [
+                            html.Div("WORKSPACE", className="eyebrow"),
+                            dcc.RadioItems(
+                                id="nav",
+                                options=[
+                                    {"label": "Operations dashboard", "value": "dashboard"},
+                                    {"label": "Dock & shipment board", "value": "shipments"},
+                                    {"label": "Purchasing approvals", "value": "purchasing"},
+                                    {"label": "Knowledge assistant", "value": "knowledge"},
+                                ],
+                                value="dashboard",
+                                className="nav-list",
+                                labelClassName="nav-item",
+                            ),
+                            html.Div("DEMO ACCOUNT", className="eyebrow side-space")
+                            if demo_identity
+                            else html.Div("IDENTITY", className="eyebrow side-space"),
+                            dcc.Dropdown(
+                                id="role-switch",
+                                options=[
+                                    {"label": u.display_name, "value": u.username}
+                                    for u in store.users.values()
+                                ],
+                                value="demo.viewer",
+                                clearable=False,
+                            )
+                            if demo_identity
+                            else html.A(
+                                "Sign in with Microsoft Entra ID",
+                                href="/auth/login",
+                                className="button secondary",
+                            ),
+                            html.Div(
+                                "Role changes are development-only and enforced server-side.",
+                                className="side-note",
+                            )
+                            if demo_identity
+                            else html.Div(
+                                "Roles are mapped from Entra app-role claims.",
+                                className="side-note",
+                            ),
+                        ],
+                        className="sidebar",
+                    ),
+                    html.Section(id="page-content", className="content"),
+                ],
+                className="shell",
+            ),
+            html.Footer(
+                "UTC storage · display timezone: "
+                + settings.display_timezone
+                + " · Portfolio application with synthetic data",
+                className="footer",
+            ),
+        ],
+        className="app-shell",
+    )
 
 
 def csv_safe(value) -> str:
@@ -106,56 +177,365 @@ def freshness_text(metadata: dict) -> str:
 
 def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
-    return html.Div([
-        page_heading("Operations dashboard", "Move today’s harvest with confidence.", "A single operational view of volume, service, fill, and labor signals.", "Last refreshed · synthetic seed"),
-        html.Div([html.Div([html.Label("Planned departure range"), dcc.DatePickerRange(id="filter-dates", start_date="2026-01-01", end_date="2026-03-31", display_format="YYYY-MM-DD", minimum_nights=0)], className="filter-control date-filter"), html.Div([html.Label("Customer"), dcc.Dropdown(id="filter-customer", options=[{"label": "All customers", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Product"), dcc.Dropdown(id="filter-product", options=[{"label": "All products", "value": "All"}] + [{"label": x, "value": x} for x in options["product"]], value="All")], className="filter-control"), html.Div([html.Label("Facility"), dcc.Dropdown(id="filter-facility", options=[{"label": "All facilities", "value": "All"}] + [{"label": x, "value": x} for x in options["facility"]], value="All")], className="filter-control")], className="filter-row"),
-        html.Div(id="kpi-row", className="metric-grid"),
-        html.Div([dcc.Graph(id="volume-chart", config={"displayModeBar": False}), dcc.Graph(id="service-chart", config={"displayModeBar": False})], className="chart-grid"),
-        html.Div([section_heading("Shipment exceptions", "Late departures or partial fills require an operator decision."), html.Div(id="exceptions-table")], className="panel"),
-    ])
+    return html.Div(
+        [
+            page_heading(
+                "Operations dashboard",
+                "Move today’s harvest with confidence.",
+                "A single operational view of volume, service, fill, and labor signals.",
+                "Last refreshed · synthetic seed",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("Planned departure range"),
+                            dcc.DatePickerRange(
+                                id="filter-dates",
+                                start_date="2026-01-01",
+                                end_date="2026-03-31",
+                                display_format="YYYY-MM-DD",
+                                minimum_nights=0,
+                            ),
+                        ],
+                        className="filter-control date-filter",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Customer"),
+                            dcc.Dropdown(
+                                id="filter-customer",
+                                options=[{"label": "All customers", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["customer"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Product"),
+                            dcc.Dropdown(
+                                id="filter-product",
+                                options=[{"label": "All products", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["product"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Facility"),
+                            dcc.Dropdown(
+                                id="filter-facility",
+                                options=[{"label": "All facilities", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["facility"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                ],
+                className="filter-row",
+            ),
+            html.Div(id="kpi-row", className="metric-grid"),
+            html.Div(
+                [
+                    dcc.Graph(id="volume-chart", config={"displayModeBar": False}),
+                    dcc.Graph(id="service-chart", config={"displayModeBar": False}),
+                ],
+                className="chart-grid",
+            ),
+            html.Div(
+                [
+                    section_heading(
+                        "Shipment exceptions",
+                        "Late departures or partial fills require an operator decision.",
+                    ),
+                    html.Div(id="exceptions-table"),
+                ],
+                className="panel",
+            ),
+        ]
+    )
 
 
 def shipments_view(store: InMemoryStore):
     options = store.filter_options()
-    return html.Div([
-        html.Div([html.Div([html.Div("Execution board", className="page-kicker"), html.H1("Dock & shipment board"), html.P("Server-side rules protect each status transition and export.")]), html.A("Export CSV", href="/api/shipments/export", id="export-csv", className="button secondary")], className="page-heading"),
-        html.Div([html.Div([html.Label("Customer"), dcc.Dropdown(id="ship-customer", options=[{"label": "All", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Exceptions only"), dcc.Checklist(id="ship-exceptions", options=[{"label": " Show exceptions", "value": "yes"}], className="check-control")], className="filter-control"), html.Div([html.Label("Server page"), dcc.Input(id="ship-page", type="number", min=1, value=1)], className="filter-control")], className="filter-row"),
-        html.Div(id="shipment-alert", className="alert"),
-        html.Div(freshness_text(store.import_freshness()), id="import-freshness", className="freshness-note", role="status"),
-        dcc.ConfirmDialog(id="confirm-status", message="Apply this shipment status change?"),
-        AgGrid(id="shipment-grid", columnDefs=[{"field": x, "headerName": x.replace("_", " ").title()} for x in ["shipment_id", "customer", "product", "facility", "carrier", "dock", "dock_appointment", "planned_departure", "actual_departure", "ordered_qty", "shipped_qty", "freight_cost", "status", "version"]], rowData=[], defaultColDef={"sortable": True, "filter": True, "resizable": True}, dashGridOptions={"animateRows": False, "pagination": False}, className="ag-theme-alpine", style={"height": "430px", "width": "100%"}),
-        html.Div(id="shipment-page-info", className="section-subtitle"),
-        dcc.Upload(id="shipment-import-upload", children=html.Div("Upload shipment CSV"), className="upload-control", multiple=False),
-        html.Div([html.Label("Shipment ID"), dcc.Input(id="status-shipment-id", placeholder="SHP-1001"), html.Label("New status"), dcc.Dropdown(id="status-value", options=[{"label": x, "value": x} for x in ["Scheduled", "In Transit", "Delivered", "Exception", "Cancelled"]], clearable=False), html.Label("Expected version"), dcc.Input(id="status-version", type="number", value=1), html.Button("Apply status", id="apply-status", className="button primary")], className="inline-form"),
-    ])
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Div("Execution board", className="page-kicker"),
+                            html.H1("Dock & shipment board"),
+                            html.P("Server-side rules protect each status transition and export."),
+                        ]
+                    ),
+                    html.A(
+                        "Export CSV",
+                        href="/api/shipments/export",
+                        id="export-csv",
+                        className="button secondary",
+                    ),
+                ],
+                className="page-heading",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("Customer"),
+                            dcc.Dropdown(
+                                id="ship-customer",
+                                options=[{"label": "All", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["customer"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Exceptions only"),
+                            dcc.Checklist(
+                                id="ship-exceptions",
+                                options=[{"label": " Show exceptions", "value": "yes"}],
+                                className="check-control",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Server page"),
+                            dcc.Input(id="ship-page", type="number", min=1, value=1),
+                        ],
+                        className="filter-control",
+                    ),
+                ],
+                className="filter-row",
+            ),
+            html.Div(id="shipment-alert", className="alert"),
+            html.Div(
+                freshness_text(store.import_freshness()),
+                id="import-freshness",
+                className="freshness-note",
+                role="status",
+            ),
+            dcc.ConfirmDialog(id="confirm-status", message="Apply this shipment status change?"),
+            AgGrid(
+                id="shipment-grid",
+                columnDefs=[
+                    {"field": x, "headerName": x.replace("_", " ").title()}
+                    for x in [
+                        "shipment_id",
+                        "customer",
+                        "product",
+                        "facility",
+                        "carrier",
+                        "dock",
+                        "dock_appointment",
+                        "planned_departure",
+                        "actual_departure",
+                        "ordered_qty",
+                        "shipped_qty",
+                        "freight_cost",
+                        "status",
+                        "version",
+                    ]
+                ],
+                rowData=[],
+                defaultColDef={"sortable": True, "filter": True, "resizable": True},
+                dashGridOptions={"animateRows": False, "pagination": False},
+                className="ag-theme-alpine",
+                style={"height": "430px", "width": "100%"},
+            ),
+            html.Div(id="shipment-page-info", className="section-subtitle"),
+            dcc.Upload(
+                id="shipment-import-upload",
+                children=html.Div("Upload shipment CSV"),
+                className="upload-control",
+                multiple=False,
+            ),
+            html.Div(
+                [
+                    html.Label("Shipment ID"),
+                    dcc.Input(id="status-shipment-id", placeholder="SHP-1001"),
+                    html.Label("New status"),
+                    dcc.Dropdown(
+                        id="status-value",
+                        options=[
+                            {"label": x, "value": x}
+                            for x in [
+                                "Scheduled",
+                                "In Transit",
+                                "Delivered",
+                                "Exception",
+                                "Cancelled",
+                            ]
+                        ],
+                        clearable=False,
+                    ),
+                    html.Label("Expected version"),
+                    dcc.Input(id="status-version", type="number", value=1),
+                    html.Button("Apply status", id="apply-status", className="button primary"),
+                ],
+                className="inline-form",
+            ),
+        ]
+    )
 
 
 def purchase_cards(store, user):
-    cards = [html.Div([html.Div(r.request_id, className="purchase-id"), html.Div(f"{r.facility} · {r.requester}"), html.Div(f"${r.total:,.2f} · {r.status}", className="purchase-status")], className="purchase-card") for r in store.list_purchases(user)]
+    cards = [
+        html.Div(
+            [
+                html.Div(r.request_id, className="purchase-id"),
+                html.Div(f"{r.facility} · {r.requester}"),
+                html.Div(f"${r.total:,.2f} · {r.status}", className="purchase-status"),
+            ],
+            className="purchase-card",
+        )
+        for r in store.list_purchases(user)
+    ]
     return cards or [empty_state("No purchase requests are visible for this account.")]
 
 
 def purchase_history_view(store, user):
-    events = [html.Div(f"{event.occurred_utc.isoformat()} · {event.actor} · {event.action} · {event.entity_id}", className="section-subtitle") for event in store.purchase_history(user)]
+    events = [
+        html.Div(
+            f"{event.occurred_utc.isoformat()} · {event.actor} · {event.action} · {event.entity_id}",
+            className="section-subtitle",
+        )
+        for event in store.purchase_history(user)
+    ]
     return events or [empty_state("No approval history is available.")]
 
 
 def purchasing_view(store):
     user = current_user(store)
-    return html.Div([
-        page_heading("Controls & approvals", "Purchasing approvals", "Create requests, submit for review, and preserve the decision trail."),
-        html.Div([html.Div([html.Label("Facility"), dcc.Input(id="purchase-facility", value="Salinas")], className="filter-control"), html.Div([html.Label("Product"), dcc.Input(id="purchase-product", value="Romaine Hearts")], className="filter-control"), html.Div([html.Label("Quantity"), dcc.Input(id="purchase-qty", type="number", value=100)], className="filter-control"), html.Div([html.Label("Unit cost"), dcc.Input(id="purchase-cost", type="number", value=2.5)], className="filter-control"), html.Button("Create request", id="create-purchase", className="button primary")], className="inline-form"),
-        html.Div(id="purchase-alert", className="alert"), html.Div("Request queue", className="section-title"), html.Div(id="purchase-list", children=purchase_cards(store, user), className="purchase-list"), html.Div("Approval history", className="section-title"), html.Div(id="purchase-history", children=purchase_history_view(store, user), className="purchase-history"),
-        html.Div([html.Label("Request ID"), dcc.Input(id="submit-request-id", placeholder="PR-1001"), html.Label("Expected version"), dcc.Input(id="submit-version", type="number", value=1), html.Button("Submit for approval", id="submit-purchase", className="button secondary")], className="inline-form"),
-        html.Div([html.Label("Request ID"), dcc.Input(id="decision-request-id", placeholder="PR-1001"), html.Label("Decision"), dcc.Dropdown(id="decision-value", options=[{"label": x, "value": x} for x in ["Approved", "Rejected"]], clearable=False), html.Label("Comment"), dcc.Input(id="decision-comment"), html.Label("Expected version"), dcc.Input(id="decision-version", type="number", value=1), html.Button("Record decision", id="record-decision", className="button primary")], className="inline-form approver-form"),
-    ])
+    return html.Div(
+        [
+            page_heading(
+                "Controls & approvals",
+                "Purchasing approvals",
+                "Create requests, submit for review, and preserve the decision trail.",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("Facility"),
+                            dcc.Input(id="purchase-facility", value="Salinas"),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Product"),
+                            dcc.Input(id="purchase-product", value="Romaine Hearts"),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Quantity"),
+                            dcc.Input(id="purchase-qty", type="number", value=100),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Unit cost"),
+                            dcc.Input(id="purchase-cost", type="number", value=2.5),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Button("Create request", id="create-purchase", className="button primary"),
+                ],
+                className="inline-form",
+            ),
+            html.Div(id="purchase-alert", className="alert"),
+            html.Div("Request queue", className="section-title"),
+            html.Div(
+                id="purchase-list", children=purchase_cards(store, user), className="purchase-list"
+            ),
+            html.Div("Approval history", className="section-title"),
+            html.Div(
+                id="purchase-history",
+                children=purchase_history_view(store, user),
+                className="purchase-history",
+            ),
+            html.Div(
+                [
+                    html.Label("Request ID"),
+                    dcc.Input(id="submit-request-id", placeholder="PR-1001"),
+                    html.Label("Expected version"),
+                    dcc.Input(id="submit-version", type="number", value=1),
+                    html.Button(
+                        "Submit for approval", id="submit-purchase", className="button secondary"
+                    ),
+                ],
+                className="inline-form",
+            ),
+            html.Div(
+                [
+                    html.Label("Request ID"),
+                    dcc.Input(id="decision-request-id", placeholder="PR-1001"),
+                    html.Label("Decision"),
+                    dcc.Dropdown(
+                        id="decision-value",
+                        options=[{"label": x, "value": x} for x in ["Approved", "Rejected"]],
+                        clearable=False,
+                    ),
+                    html.Label("Comment"),
+                    dcc.Input(id="decision-comment"),
+                    html.Label("Expected version"),
+                    dcc.Input(id="decision-version", type="number", value=1),
+                    html.Button(
+                        "Record decision", id="record-decision", className="button primary"
+                    ),
+                ],
+                className="inline-form approver-form",
+            ),
+        ]
+    )
 
 
 def knowledge_view():
-    return html.Div([
-        page_heading("Operating memory", "Knowledge assistant", "Local search is always available. Generated answers require an explicitly configured provider."),
-        html.Div([dcc.Input(id="knowledge-query", placeholder="Try: What is the fill-rate definition?", className="search-input"), dcc.Dropdown(id="knowledge-mode", options=[{"label": "Local search", "value": "search"}, {"label": "Optional Claude answer", "value": "claude"}], value="search", clearable=False), html.Button("Search", id="knowledge-submit", className="button primary")], className="knowledge-form"), html.Div(id="knowledge-result", className="knowledge-result"),
-    ])
+    return html.Div(
+        [
+            page_heading(
+                "Operating memory",
+                "Knowledge assistant",
+                "Local search is always available. Generated answers require an explicitly configured provider.",
+            ),
+            html.Div(
+                [
+                    dcc.Input(
+                        id="knowledge-query",
+                        placeholder="Try: What is the fill-rate definition?",
+                        className="search-input",
+                    ),
+                    dcc.Dropdown(
+                        id="knowledge-mode",
+                        options=[
+                            {"label": "Local search", "value": "search"},
+                            {"label": "Optional Claude answer", "value": "claude"},
+                        ],
+                        value="search",
+                        clearable=False,
+                    ),
+                    html.Button("Search", id="knowledge-submit", className="button primary"),
+                ],
+                className="knowledge-form",
+            ),
+            html.Div(id="knowledge-result", className="knowledge-result"),
+        ]
+    )
 
 
 def make_app(settings: Settings | None = None):
@@ -167,12 +547,21 @@ def make_app(settings: Settings | None = None):
     knowledge = KnowledgeService(settings.claude_api_key, settings.claude_model)
     server = Flask(__name__)
     server.secret_key = settings.secret_key
-    server.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=settings.app_env == "production", PERMANENT_SESSION_LIFETIME=1800)
+    server.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=settings.app_env == "production",
+        PERMANENT_SESSION_LIFETIME=1800,
+    )
     if settings.session_redis_url:
         from flask_session import Session
         from redis import Redis
 
-        server.config.update(SESSION_TYPE="redis", SESSION_REDIS=Redis.from_url(settings.session_redis_url), SESSION_KEY_PREFIX="harvestops:")
+        server.config.update(
+            SESSION_TYPE="redis",
+            SESSION_REDIS=Redis.from_url(settings.session_redis_url),
+            SESSION_KEY_PREFIX="harvestops:",
+        )
         Session(server)
 
     @server.before_request
@@ -192,14 +581,28 @@ def make_app(settings: Settings | None = None):
     @server.after_request
     def security_headers(response):
         if current_user(store):
-            response.set_cookie("harvestops_csrf", csrf_token(), httponly=False, secure=settings.app_env == "production", samesite="Lax", max_age=1800)
+            response.set_cookie(
+                "harvestops_csrf",
+                csrf_token(),
+                httponly=False,
+                secure=settings.app_env == "production",
+                samesite="Lax",
+                max_age=1800,
+            )
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        response.headers.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
-        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        )
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
         if settings.app_env == "production":
-            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
         return response
 
     @server.get("/healthz")
@@ -211,6 +614,7 @@ def make_app(settings: Settings | None = None):
         if settings.storage_mode == "sqlserver":
             try:
                 from .repository import SqlServerRepository
+
                 SqlServerRepository(settings).ping()
             except Exception as exc:  # readiness should not leak the connection string
                 log.warning("database readiness failed: %s", type(exc).__name__)
@@ -221,7 +625,9 @@ def make_app(settings: Settings | None = None):
     def demo_login():
         if not settings.demo_mode or settings.identity_mode != "demo":
             return jsonify({"error": "demo identity is disabled"}), 403
-        if session.get("username") and not valid_csrf(request.headers.get("X-CSRF-Token", ""), allow_cookie=False):
+        if session.get("username") and not valid_csrf(
+            request.headers.get("X-CSRF-Token", ""), allow_cookie=False
+        ):
             return jsonify({"error": "CSRF token required"}), 403
         username = request.json.get("username", "") if request.is_json else ""
         if username not in store.users:
@@ -248,7 +654,11 @@ def make_app(settings: Settings | None = None):
             return jsonify({"error": "invalid identity state"}), 400
         claims = EntraAuth(settings).redeem(request.args.to_dict())
         principal = claims.get("preferred_username") or claims.get("email") or claims.get("sub")
-        role_map = {"HarvestOps.Operator": "operator", "HarvestOps.Approver": "approver", "HarvestOps.Admin": "admin"}
+        role_map = {
+            "HarvestOps.Operator": "operator",
+            "HarvestOps.Approver": "approver",
+            "HarvestOps.Admin": "admin",
+        }
         claim_roles = claims.get("roles", [])
         if isinstance(claim_roles, str):
             claim_roles = [claim_roles]
@@ -264,7 +674,9 @@ def make_app(settings: Settings | None = None):
 
     @server.post("/auth/logout")
     def logout():
-        if current_user(store) and not valid_csrf(request.headers.get("X-CSRF-Token", ""), allow_cookie=False):
+        if current_user(store) and not valid_csrf(
+            request.headers.get("X-CSRF-Token", ""), allow_cookie=False
+        ):
             return jsonify({"error": "CSRF token required"}), 403
         session.clear()
         return jsonify({"status": "signed_out"})
@@ -282,7 +694,15 @@ def make_app(settings: Settings | None = None):
         writer = csv.writer(output)
         writer.writerow(["shipment_id", "customer", "product", "status", "freight_cost"])
         for row in store.export_shipments():
-            writer.writerow([csv_safe(row["shipment_id"]), csv_safe(row["customer"]), csv_safe(row["product"]), csv_safe(row["status"]), csv_safe(row["freight_cost"])])
+            writer.writerow(
+                [
+                    csv_safe(row["shipment_id"]),
+                    csv_safe(row["customer"]),
+                    csv_safe(row["product"]),
+                    csv_safe(row["status"]),
+                    csv_safe(row["freight_cost"]),
+                ]
+            )
         response = make_response(output.getvalue())
         response.headers["Content-Type"] = "text/csv"
         response.headers["Content-Disposition"] = "attachment; filename=harvestops-shipments.csv"
@@ -303,14 +723,30 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, ValueError) as exc:
             return jsonify({"error": str(exc)}), 400
 
-    app = Dash(__name__, server=server, title="HarvestOps", assets_folder=str(Path(__file__).parent / "assets"), suppress_callback_exceptions=True)
+    app = Dash(
+        __name__,
+        server=server,
+        title="HarvestOps",
+        assets_folder=str(Path(__file__).parent / "assets"),
+        suppress_callback_exceptions=True,
+    )
     app.layout = lambda: build_layout(store, settings)
 
     @app.callback(Output("page-content", "children"), Input("nav", "value"))
     def switch_page(page):
-        return {"dashboard": dashboard_view(store), "shipments": shipments_view(store), "purchasing": purchasing_view(store), "knowledge": knowledge_view()}.get(page, dashboard_view(store))
+        return {
+            "dashboard": dashboard_view(store),
+            "shipments": shipments_view(store),
+            "purchasing": purchasing_view(store),
+            "knowledge": knowledge_view(),
+        }.get(page, dashboard_view(store))
 
-    @app.callback(Output("csrf-token", "data"), Output("csrf-status", "children"), Output("csrf-status", "data-csrf-token"), Input("url", "pathname"))
+    @app.callback(
+        Output("csrf-token", "data"),
+        Output("csrf-status", "children"),
+        Output("csrf-status", "data-csrf-token"),
+        Input("url", "pathname"),
+    )
     def initialize_csrf(_):
         token = csrf_token()
         return token, "ready", token
@@ -322,40 +758,177 @@ def make_app(settings: Settings | None = None):
             return ""
         return f"{user.display_name} · {', '.join(sorted(user.roles))}"
 
-    @app.callback(Output("active-user", "data"), Input("role-switch", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"))
+    @app.callback(
+        Output("active-user", "data"),
+        Input("role-switch", "value"),
+        State("csrf-token", "data"),
+        State("csrf-status", "data-csrf-token"),
+    )
     def switch_user(username, token, status_token):
-        if settings.demo_mode and (valid_csrf(token) or valid_csrf(status_token)) and username in store.users:
+        if (
+            settings.demo_mode
+            and (valid_csrf(token) or valid_csrf(status_token))
+            and username in store.users
+        ):
             session["username"] = username
             return username
         return no_update
 
-    @app.callback(Output("kpi-row", "children"), Output("volume-chart", "figure"), Output("service-chart", "figure"), Output("exceptions-table", "children"), Input("filter-dates", "start_date"), Input("filter-dates", "end_date"), Input("filter-customer", "value"), Input("filter-product", "value"), Input("filter-facility", "value"))
+    @app.callback(
+        Output("kpi-row", "children"),
+        Output("volume-chart", "figure"),
+        Output("service-chart", "figure"),
+        Output("exceptions-table", "children"),
+        Input("filter-dates", "start_date"),
+        Input("filter-dates", "end_date"),
+        Input("filter-customer", "value"),
+        Input("filter-product", "value"),
+        Input("filter-facility", "value"),
+    )
     def refresh_dashboard(start_date, end_date, customer, product, facility):
-        filters = {"start_date": start_date, "end_date": end_date, "customer": customer, "product": product, "facility": facility}
+        filters = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "customer": customer,
+            "product": product,
+            "facility": facility,
+        }
         k = store.kpis(filters)
-        cards = [metric_card("Shipment volume", str(k["shipment_volume"]), " loads", "Seeded records in scope"), metric_card("On-time rate", f"{k['on_time_rate']:.1f}", "%", "Closed shipments only"), metric_card("Fill rate", f"{k['fill_rate']:.1f}", "%", "Shipped ÷ ordered"), metric_card("Freight cost", f"${k['freight_cost']:,.0f}", "", "Shipment freight in scope"), metric_card("Production output", f"{k['production_output']:,}", " units", "Production runs in scope"), metric_card("Labor productivity", f"{k['labor_productivity']:,.1f}", " units/hour", "Output ÷ labor hours")]
+        cards = [
+            metric_card(
+                "Shipment volume", str(k["shipment_volume"]), " loads", "Seeded records in scope"
+            ),
+            metric_card("On-time rate", f"{k['on_time_rate']:.1f}", "%", "Closed shipments only"),
+            metric_card("Fill rate", f"{k['fill_rate']:.1f}", "%", "Shipped ÷ ordered"),
+            metric_card(
+                "Freight cost", f"${k['freight_cost']:,.0f}", "", "Shipment freight in scope"
+            ),
+            metric_card(
+                "Production output",
+                f"{k['production_output']:,}",
+                " units",
+                "Production runs in scope",
+            ),
+            metric_card(
+                "Labor productivity",
+                f"{k['labor_productivity']:,.1f}",
+                " units/hour",
+                "Output ÷ labor hours",
+            ),
+        ]
         rows, _ = store.list_shipments(filters, 1, 100)
-        volume = go.Figure(go.Bar(x=[r.shipment_id for r in rows], y=[float(r.shipped_qty) for r in rows], marker_color="#0f766e"))
-        volume.update_layout(title="Shipped quantity by load", height=300, margin={"l": 30, "r": 20, "t": 55, "b": 30}, plot_bgcolor="white", paper_bgcolor="white")
-        service = go.Figure(go.Pie(labels=["On time", "Late / open"], values=[sum(1 for r in rows if r.on_time), sum(1 for r in rows if not r.on_time)], hole=.65, marker_colors=["#2f855a", "#f59e0b"]))
-        service.update_layout(title="Service signal", height=300, margin={"l": 20, "r": 20, "t": 55, "b": 20}, plot_bgcolor="white", paper_bgcolor="white", showlegend=True)
-        exceptions = [r for r in rows if r.status == "Exception" or (r.actual_departure_utc and not r.on_time) or r.fill_rate < .95]
-        table = dash_table.DataTable(data=[{"Shipment": r.shipment_id, "Customer": r.customer, "Issue": "Late departure" if r.actual_departure_utc and not r.on_time else "Partial fill", "Fill": f"{r.fill_rate:.0%}", "Status": r.status} for r in exceptions], columns=[{"name": x, "id": x} for x in ["Shipment", "Customer", "Issue", "Fill", "Status"]], style_cell={"padding": "10px", "fontFamily": "Inter, sans-serif"}, style_header={"fontWeight": "700", "backgroundColor": "#edf2f2"})
+        volume = go.Figure(
+            go.Bar(
+                x=[r.shipment_id for r in rows],
+                y=[float(r.shipped_qty) for r in rows],
+                marker_color="#0f766e",
+            )
+        )
+        volume.update_layout(
+            title="Shipped quantity by load",
+            height=300,
+            margin={"l": 30, "r": 20, "t": 55, "b": 30},
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+        )
+        service = go.Figure(
+            go.Pie(
+                labels=["On time", "Late / open"],
+                values=[sum(1 for r in rows if r.on_time), sum(1 for r in rows if not r.on_time)],
+                hole=0.65,
+                marker_colors=["#2f855a", "#f59e0b"],
+            )
+        )
+        service.update_layout(
+            title="Service signal",
+            height=300,
+            margin={"l": 20, "r": 20, "t": 55, "b": 20},
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            showlegend=True,
+        )
+        exceptions = [
+            r
+            for r in rows
+            if r.status == "Exception"
+            or (r.actual_departure_utc and not r.on_time)
+            or r.fill_rate < 0.95
+        ]
+        table = dash_table.DataTable(
+            data=[
+                {
+                    "Shipment": r.shipment_id,
+                    "Customer": r.customer,
+                    "Issue": "Late departure"
+                    if r.actual_departure_utc and not r.on_time
+                    else "Partial fill",
+                    "Fill": f"{r.fill_rate:.0%}",
+                    "Status": r.status,
+                }
+                for r in exceptions
+            ],
+            columns=[
+                {"name": x, "id": x} for x in ["Shipment", "Customer", "Issue", "Fill", "Status"]
+            ],
+            style_cell={"padding": "10px", "fontFamily": "Inter, sans-serif"},
+            style_header={"fontWeight": "700", "backgroundColor": "#edf2f2"},
+        )
         return cards, volume, service, table
 
-    @app.callback(Output("shipment-grid", "rowData"), Output("shipment-page-info", "children"), Input("ship-customer", "value"), Input("ship-exceptions", "value"), Input("ship-page", "value"))
+    @app.callback(
+        Output("shipment-grid", "rowData"),
+        Output("shipment-page-info", "children"),
+        Input("ship-customer", "value"),
+        Input("ship-exceptions", "value"),
+        Input("ship-page", "value"),
+    )
     def refresh_shipments(customer, exception, page):
         page = max(1, int(page or 1))
-        rows, total = store.list_shipments({"customer": customer, "exceptions_only": bool(exception)}, page, 8)
+        rows, total = store.list_shipments(
+            {"customer": customer, "exceptions_only": bool(exception)}, page, 8
+        )
         max_page = max(1, math.ceil(total / 8))
-        data = [{"shipment_id": r.shipment_id, "customer": r.customer, "product": r.product, "facility": r.facility, "carrier": r.carrier, "dock": r.dock, "dock_appointment": r.appointment_utc.isoformat(), "planned_departure": r.planned_departure_utc.isoformat(), "actual_departure": r.actual_departure_utc.isoformat() if r.actual_departure_utc else "", "ordered_qty": str(r.ordered_qty), "shipped_qty": str(r.shipped_qty), "freight_cost": str(r.freight_cost), "status": r.status, "version": r.version} for r in rows]
+        data = [
+            {
+                "shipment_id": r.shipment_id,
+                "customer": r.customer,
+                "product": r.product,
+                "facility": r.facility,
+                "carrier": r.carrier,
+                "dock": r.dock,
+                "dock_appointment": r.appointment_utc.isoformat(),
+                "planned_departure": r.planned_departure_utc.isoformat(),
+                "actual_departure": r.actual_departure_utc.isoformat()
+                if r.actual_departure_utc
+                else "",
+                "ordered_qty": str(r.ordered_qty),
+                "shipped_qty": str(r.shipped_qty),
+                "freight_cost": str(r.freight_cost),
+                "status": r.status,
+                "version": r.version,
+            }
+            for r in rows
+        ]
         return data, f"Page {min(page, max_page)} of {max_page} · {total} matching shipments"
 
-    @app.callback(Output("confirm-status", "displayed"), Input("apply-status", "n_clicks"), prevent_initial_call=True)
+    @app.callback(
+        Output("confirm-status", "displayed"),
+        Input("apply-status", "n_clicks"),
+        prevent_initial_call=True,
+    )
     def ask_status_confirmation(n_clicks):
         return bool(n_clicks)
 
-    @app.callback(Output("shipment-alert", "children"), Input("confirm-status", "submit_n_clicks"), State("status-shipment-id", "value"), State("status-value", "value"), State("status-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    @app.callback(
+        Output("shipment-alert", "children"),
+        Input("confirm-status", "submit_n_clicks"),
+        State("status-shipment-id", "value"),
+        State("status-value", "value"),
+        State("status-version", "value"),
+        State("csrf-token", "data"),
+        State("csrf-status", "data-csrf-token"),
+        prevent_initial_call=True,
+    )
     def apply_status(_, shipment_id, new_status, version, token, status_token):
         try:
             if not (valid_csrf(token) or valid_csrf(status_token)):
@@ -366,10 +939,19 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not apply change: {exc}"
 
-    @app.callback(Output("shipment-alert", "children", allow_duplicate=True), Output("import-freshness", "children"), Input("shipment-import-upload", "contents"), State("shipment-import-upload", "filename"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
+    @app.callback(
+        Output("shipment-alert", "children", allow_duplicate=True),
+        Output("import-freshness", "children"),
+        Input("shipment-import-upload", "contents"),
+        State("shipment-import-upload", "filename"),
+        State("csrf-token", "data"),
+        State("csrf-status", "data-csrf-token"),
+        prevent_initial_call=True,
+    )
     def import_from_upload(contents, filename, token, status_token):
         try:
             import base64
+
             if not (valid_csrf(token) or valid_csrf(status_token)):
                 raise PermissionError("CSRF token required")
             user = current_user(store)
@@ -379,19 +961,61 @@ def make_app(settings: Settings | None = None):
                 raise ValueError("CSV content is required")
             _, encoded = contents.split(",", 1)
             result = store.import_shipments(base64.b64decode(encoded).decode("utf-8"), user)
-            return f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC.", freshness_text(store.import_freshness())
+            return (
+                f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC.",
+                freshness_text(store.import_freshness()),
+            )
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
             return f"Import failed: {exc}", no_update
 
-    @app.callback(Output("purchase-alert", "children"), Output("purchase-list", "children"), Output("purchase-history", "children"), Input("create-purchase", "n_clicks"), Input("submit-purchase", "n_clicks"), Input("record-decision", "n_clicks"), State("purchase-facility", "value"), State("purchase-product", "value"), State("purchase-qty", "value"), State("purchase-cost", "value"), State("submit-request-id", "value"), State("submit-version", "value"), State("decision-request-id", "value"), State("decision-value", "value"), State("decision-comment", "value"), State("decision-version", "value"), State("csrf-token", "data"), State("csrf-status", "data-csrf-token"), prevent_initial_call=True)
-    def purchase_action(create_click, submit_click, decision_click, facility, product, qty, cost, submit_id, submit_version, req_id, decision, comment, version, token, status_token):
+    @app.callback(
+        Output("purchase-alert", "children"),
+        Output("purchase-list", "children"),
+        Output("purchase-history", "children"),
+        Input("create-purchase", "n_clicks"),
+        Input("submit-purchase", "n_clicks"),
+        Input("record-decision", "n_clicks"),
+        State("purchase-facility", "value"),
+        State("purchase-product", "value"),
+        State("purchase-qty", "value"),
+        State("purchase-cost", "value"),
+        State("submit-request-id", "value"),
+        State("submit-version", "value"),
+        State("decision-request-id", "value"),
+        State("decision-value", "value"),
+        State("decision-comment", "value"),
+        State("decision-version", "value"),
+        State("csrf-token", "data"),
+        State("csrf-status", "data-csrf-token"),
+        prevent_initial_call=True,
+    )
+    def purchase_action(
+        create_click,
+        submit_click,
+        decision_click,
+        facility,
+        product,
+        qty,
+        cost,
+        submit_id,
+        submit_version,
+        req_id,
+        decision,
+        comment,
+        version,
+        token,
+        status_token,
+    ):
         from dash import ctx
+
         try:
             if not (valid_csrf(token) or valid_csrf(status_token)):
                 raise PermissionError("CSRF token required")
             user = current_user(store)
             if ctx.triggered_id == "create-purchase":
-                req = store.create_purchase(user, facility, [{"product": product, "quantity": qty, "unit_cost": cost}])
+                req = store.create_purchase(
+                    user, facility, [{"product": product, "quantity": qty, "unit_cost": cost}]
+                )
                 message = f"Created {req.request_id} as draft for ${req.total:,.2f}."
             elif ctx.triggered_id == "submit-purchase":
                 req = store.submit_purchase(submit_id, user, int(submit_version))
@@ -405,15 +1029,45 @@ def make_app(settings: Settings | None = None):
         except (DomainError, PermissionError, TypeError, ValueError) as exc:
             return f"Could not complete action: {exc}", no_update, no_update
 
-    @app.callback(Output("knowledge-result", "children"), Input("knowledge-submit", "n_clicks"), State("knowledge-query", "value"), State("knowledge-mode", "value"), prevent_initial_call=True)
+    @app.callback(
+        Output("knowledge-result", "children"),
+        Input("knowledge-submit", "n_clicks"),
+        State("knowledge-query", "value"),
+        State("knowledge-mode", "value"),
+        prevent_initial_call=True,
+    )
     def knowledge_search(_, query, mode):
         hits = knowledge.search(query, current_user(store))
         if not hits:
-            return html.Div([html.Div("No permitted operating document matched that query.", className="empty-state")])
+            return html.Div(
+                [
+                    html.Div(
+                        "No permitted operating document matched that query.",
+                        className="empty-state",
+                    )
+                ]
+            )
         if mode == "claude":
             result = knowledge.answer_with_claude(query, hits)
-            return html.Div([html.Div("Claude answer mode · optional provider", className="mode-label"), html.P(result["message"]), html.Div(f"Usage metadata: {result['usage'] or 'not available'}", className="section-subtitle"), html.Div([f"Source: {doc.source}" for doc in hits], className="citation")])
-        return html.Div([html.Div("Local search", className="mode-label"), html.H3(hits[0].title), html.P(hits[0].body), html.Div([f"Source: {doc.source}" for doc in hits], className="citation")])
+            return html.Div(
+                [
+                    html.Div("Claude answer mode · optional provider", className="mode-label"),
+                    html.P(result["message"]),
+                    html.Div(
+                        f"Usage metadata: {result['usage'] or 'not available'}",
+                        className="section-subtitle",
+                    ),
+                    html.Div([f"Source: {doc.source}" for doc in hits], className="citation"),
+                ]
+            )
+        return html.Div(
+            [
+                html.Div("Local search", className="mode-label"),
+                html.H3(hits[0].title),
+                html.P(hits[0].body),
+                html.Div([f"Source: {doc.source}" for doc in hits], className="citation"),
+            ]
+        )
 
     return app
 

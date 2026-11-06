@@ -47,7 +47,9 @@ def test_purchase_self_approval_and_valid_approval():
     store = InMemoryStore()
     requester = store.users["demo.operator"]
     approver = store.users["demo.approver"]
-    request = store.create_purchase(requester, "Salinas", [{"product": "Cartons", "quantity": 10, "unit_cost": "2.35"}])
+    request = store.create_purchase(
+        requester, "Salinas", [{"product": "Cartons", "quantity": 10, "unit_cost": "2.35"}]
+    )
     store.submit_purchase(request.request_id, requester, request.version)
     with pytest.raises(PermissionError, match="Self-approval"):
         store.decide_purchase(request.request_id, requester, "Approved", "", 2)
@@ -61,14 +63,23 @@ def test_purchase_reads_are_scoped_for_non_approvers():
     operator = store.users["demo.operator"]
     viewer = store.users["demo.viewer"]
     approver = store.users["demo.approver"]
-    own = store.create_purchase(operator, "Salinas", [{"product": "Cartons", "quantity": 2, "unit_cost": "1.00"}])
-    other = store.create_purchase(viewer, "Yuma", [{"product": "Pallet Wrap", "quantity": 3, "unit_cost": "4.00"}])
+    own = store.create_purchase(
+        operator, "Salinas", [{"product": "Cartons", "quantity": 2, "unit_cost": "1.00"}]
+    )
+    other = store.create_purchase(
+        viewer, "Yuma", [{"product": "Pallet Wrap", "quantity": 3, "unit_cost": "4.00"}]
+    )
     operator_visible = store.list_purchases(operator)
     assert own.request_id in {request.request_id for request in operator_visible}
     assert all(request.requester == operator.username for request in operator_visible)
     assert [request.request_id for request in store.list_purchases(viewer)] == [other.request_id]
-    assert {own.request_id, other.request_id}.issubset({request.request_id for request in store.list_purchases(approver)})
-    assert all(event.entity_id in {request.request_id for request in operator_visible} for event in store.purchase_history(operator))
+    assert {own.request_id, other.request_id}.issubset(
+        {request.request_id for request in store.list_purchases(approver)}
+    )
+    assert all(
+        event.entity_id in {request.request_id for request in operator_visible}
+        for event in store.purchase_history(operator)
+    )
 
 
 def test_import_is_idempotent_and_reports_invalid_rows():

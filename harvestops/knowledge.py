@@ -16,10 +16,28 @@ class KnowledgeDocument:
 
 
 DOCUMENTS = (
-    KnowledgeDocument("KPI definitions", "Shipment volume counts shipments in scope. Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments. Freight cost is the sum of shipment freight cost. Production output is the sum of production-run output, and labor productivity is output divided by labor hours.", "knowledge/kpi-definitions.md"),
-    KnowledgeDocument("Dock exception playbook", "For a late departure, confirm appointment, carrier arrival, and quantity before changing status or escalating.", "knowledge/dock-operations.md", frozenset({"viewer", "operator", "admin"})),
-    KnowledgeDocument("Purchase controls", "A requester cannot approve their own request. Approval decisions require the pending state and current version.", "knowledge/purchasing.md", frozenset({"approver", "admin"})),
-    KnowledgeDocument("Shipment exception handling", "Repeated shipment imports are idempotent by external shipment reference. Invalid rows are rejected into the import error report and do not overwrite the accepted shipment record.", "knowledge/shipment-exceptions.md"),
+    KnowledgeDocument(
+        "KPI definitions",
+        "Shipment volume counts shipments in scope. Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments. Freight cost is the sum of shipment freight cost. Production output is the sum of production-run output, and labor productivity is output divided by labor hours.",
+        "knowledge/kpi-definitions.md",
+    ),
+    KnowledgeDocument(
+        "Dock exception playbook",
+        "For a late departure, confirm appointment, carrier arrival, and quantity before changing status or escalating.",
+        "knowledge/dock-operations.md",
+        frozenset({"viewer", "operator", "admin"}),
+    ),
+    KnowledgeDocument(
+        "Purchase controls",
+        "A requester cannot approve their own request. Approval decisions require the pending state and current version.",
+        "knowledge/purchasing.md",
+        frozenset({"approver", "admin"}),
+    ),
+    KnowledgeDocument(
+        "Shipment exception handling",
+        "Repeated shipment imports are idempotent by external shipment reference. Invalid rows are rejected into the import error report and do not overwrite the accepted shipment record.",
+        "knowledge/shipment-exceptions.md",
+    ),
 )
 
 KPI_DEFINITIONS = (
@@ -59,15 +77,47 @@ class KnowledgeService:
 
     def answer_with_claude(self, query: str, documents: list[KnowledgeDocument]) -> dict:
         if not self.api_key:
-            return {"status": "unavailable", "message": "Claude answer mode is not configured; choose Local search.", "usage": {}}
+            return {
+                "status": "unavailable",
+                "message": "Claude answer mode is not configured; choose Local search.",
+                "usage": {},
+            }
         context = "\n\n".join(f"[{doc.source}] {doc.title}: {doc.body}" for doc in documents)[:6000]
-        payload = json.dumps({"model": self.model, "max_tokens": 300, "system": "Answer only from the supplied HarvestOps operating documents. Say when the documents do not answer the question.", "messages": [{"role": "user", "content": f"Question: {query[:500]}\n\nSources:\n{context}"}]}).encode()
-        req = urlrequest.Request("https://api.anthropic.com/v1/messages", data=payload, headers={"content-type": "application/json", "x-api-key": self.api_key, "anthropic-version": "2023-06-01"}, method="POST")
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "max_tokens": 300,
+                "system": "Answer only from the supplied HarvestOps operating documents. Say when the documents do not answer the question.",
+                "messages": [
+                    {"role": "user", "content": f"Question: {query[:500]}\n\nSources:\n{context}"}
+                ],
+            }
+        ).encode()
+        req = urlrequest.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "content-type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
         try:
             with urlrequest.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read())
-            text = " ".join(block.get("text", "") for block in data.get("content", []) if block.get("type") == "text")
-            usage = {key: data.get("usage", {}).get(key) for key in ("input_tokens", "output_tokens")}
+            text = " ".join(
+                block.get("text", "")
+                for block in data.get("content", [])
+                if block.get("type") == "text"
+            )
+            usage = {
+                key: data.get("usage", {}).get(key) for key in ("input_tokens", "output_tokens")
+            }
             return {"status": "ok", "message": text[:4000], "usage": usage}
         except Exception as exc:  # provider failures are user-facing, not process-fatal
-            return {"status": "error", "message": f"Claude answer unavailable ({type(exc).__name__}); local search remains available.", "usage": {}}
+            return {
+                "status": "error",
+                "message": f"Claude answer unavailable ({type(exc).__name__}); local search remains available.",
+                "usage": {},
+            }

@@ -53,7 +53,9 @@ class SqlServerRepository:
 
     def shipment_count(self, filters: dict) -> int:
         where, params = self._shipment_filter(filters)
-        rows = self.query(f"SELECT COUNT_BIG(*) AS total FROM dbo.v_shipment_board WHERE {where}", params)
+        rows = self.query(
+            f"SELECT COUNT_BIG(*) AS total FROM dbo.v_shipment_board WHERE {where}", params
+        )
         return int(rows[0]["total"])
 
     def shipment_rows(self, filters: dict, page: int, page_size: int) -> list[dict]:
@@ -77,7 +79,11 @@ class SqlServerRepository:
         if shipment_id:
             clauses.append("shipment_id = ?")
             params.append(shipment_id)
-        for column, key in (("customer_name", "customer"), ("product_name", "product"), ("facility_name", "facility")):
+        for column, key in (
+            ("customer_name", "customer"),
+            ("product_name", "product"),
+            ("facility_name", "facility"),
+        ):
             value = filters.get(key)
             if value and value != "All":
                 clauses.append(f"{column} = ?")

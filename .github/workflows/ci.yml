@@ -12,6 +12,7 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install -e '.[dev]'
       - run: ruff check .
+      - run: ruff format --check .
       - run: pytest
       - run: python -m playwright install --with-deps chromium
       - run: (python -m harvestops.web > /tmp/harvestops.log 2>&1 & echo $! > /tmp/harvestops.pid)
