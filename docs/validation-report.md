@@ -11,6 +11,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `./scripts/verify-local.sh` passed with the same 40 passed / 2 skipped result and a redacted configuration summary; the script prefers an existing `.venv312` or `.venv` interpreter before host Python.
 - ruff check . passed.
 - `ruff format --check .` passed after formatting the repository; CI now runs the same blocking format check.
+- `uvx --from pip-audit==2.9.0 pip-audit --strict` completed locally with `No known vulnerabilities found`.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
 - Playwright Chromium was installed and browser smoke passed 5 tests against the local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status workflow including confirmation, a purchase approval workflow, a 390px mobile viewport rendering check, and a visible keyboard/programmatic focus indicator check.
