@@ -13,8 +13,8 @@ response="$({
   printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
   printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
   printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"lookup_shipment","arguments":{"shipment_id":"SHP-1004","principal":"demo.operator"}}}'
-  # Keep stdin open briefly so the async stdio transport can flush the tool call response.
-  sleep 0.5
+  # Keep stdin open long enough for a cold CI runner to flush the async stdio response.
+  sleep 2
 } | APP_ENV=development DEMO_MODE=true IDENTITY_MODE=demo STORAGE_MODE=demo SECRET_KEY=local-validation "$PYTHON_BIN" -m harvestops.mcp_server 2>/dev/null)"
 
 grep -q '"protocolVersion":"2025-06-18"' <<<"$response"
