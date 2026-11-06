@@ -16,12 +16,32 @@ jobs:
       - run: pytest
       - run: python -m playwright install --with-deps chromium
       - run: (python -m harvestops.web > /tmp/harvestops.log 2>&1 & echo $! > /tmp/harvestops.pid)
+      - name: Wait for Dash readiness
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8050/healthz; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/harvestops.log
+          exit 1
       - run: pytest tests/browser -q
       - run: python -m compileall harvestops
       - name: Install dependency audit tool
         run: python -m pip install pip-audit==2.9.0
       - name: Audit Python dependencies
         run: pip-audit --strict
+  legacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: legacy/package-lock.json
+      - run: npm ci --prefix legacy
+      - run: npm run build --prefix legacy
+      - run: npm audit --prefix legacy --omit=dev --audit-level=high
   secret-scan:
     runs-on: ubuntu-latest
     permissions: { contents: read }
