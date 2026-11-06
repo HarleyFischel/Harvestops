@@ -746,6 +746,23 @@ def make_app(settings: Settings | None = None):
         response.headers["Content-Disposition"] = "attachment; filename=harvestops-shipments.csv"
         return response
 
+    @server.get("/api/shipments/<shipment_id>")
+    @require_role(store, "viewer", "operator", "admin")
+    def get_shipment(shipment_id):
+        shipment = store.get_shipment(shipment_id)
+        if not shipment:
+            return jsonify({"error": "shipment not found"}), 404
+        return jsonify(
+            {
+                "shipment_id": shipment.shipment_id,
+                "customer": shipment.customer,
+                "product": shipment.product,
+                "facility": shipment.facility,
+                "status": shipment.status,
+                "version": shipment.version,
+            }
+        )
+
     @server.post("/api/shipments/import")
     @require_role(store, "operator", "admin")
     def import_shipments():

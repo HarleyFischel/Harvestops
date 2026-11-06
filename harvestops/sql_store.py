@@ -76,6 +76,10 @@ class SqlServerStore:
         rows = self.repository.shipment_rows(filters, page, page_size)
         return [self._shipment(row) for row in rows], self.repository.shipment_count(filters)
 
+    def get_shipment(self, shipment_id: str) -> Shipment | None:
+        row = self.repository.shipment_by_id(shipment_id)
+        return self._shipment(row) if row else None
+
     def export_shipments(self) -> list[dict]:
         rows = self.repository.query(
             "SELECT shipment_id, customer_name AS customer, product_name AS product, status, freight_cost FROM dbo.v_shipment_board ORDER BY planned_departure_utc"

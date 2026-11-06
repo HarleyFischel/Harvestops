@@ -34,6 +34,22 @@ def test_mobile_dashboard_renders():
 
 
 @pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_tablet_dashboard_renders_with_responsive_content():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 768, "height": 1024})
+        page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
+        assert (
+            page.get_by_role("heading", name="Move today’s harvest with confidence.").count() == 1
+        )
+        content = page.locator(".content").bounding_box()
+        metrics = page.locator(".metric-grid").bounding_box()
+        assert content is not None and content["width"] <= 768
+        assert metrics is not None and metrics["width"] <= 768
+        browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
 def test_keyboard_focus_indicator_is_visible():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)

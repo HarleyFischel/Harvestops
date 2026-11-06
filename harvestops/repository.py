@@ -71,6 +71,10 @@ class SqlServerRepository:
             params,
         )
 
+    def shipment_by_id(self, shipment_id: str) -> dict | None:
+        rows = self.shipment_rows({"shipment_id": shipment_id}, 1, 1)
+        return rows[0] if rows else None
+
     @staticmethod
     def _shipment_filter(filters: dict) -> tuple[str, list]:
         clauses = ["1=1"]

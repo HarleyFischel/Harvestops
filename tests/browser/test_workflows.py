@@ -50,16 +50,24 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         login_demo("demo.operator")
         page.locator("label").filter(has_text="Dock & shipment board").click()
         page.get_by_role("heading", name="Dock & shipment board").wait_for()
+        shipment = page.evaluate("""async () => (await fetch('/api/shipments/SHP-1004')).json()""")
+        assert shipment["shipment_id"] == "SHP-1004"
+        next_status = {
+            "Scheduled": "In Transit",
+            "In Transit": "Exception",
+            "Exception": "In Transit",
+        }.get(shipment["status"])
+        assert next_status is not None
         page.locator("#status-shipment-id").fill("SHP-1004")
         page.locator("#status-value").click()
-        page.get_by_text("In Transit", exact=True).last.click()
-        page.locator("#status-version").fill("1")
+        page.get_by_text(next_status, exact=True).last.click()
+        page.locator("#status-version").fill(str(shipment["version"]))
         page.once("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Apply status").click()
         page.wait_for_function(
             "() => document.querySelector('#shipment-alert')?.textContent.trim().length > 0"
         )
-        assert "Updated SHP-1004 to In Transit" in page.locator("#shipment-alert").inner_text()
+        assert f"Updated SHP-1004 to {next_status}" in page.locator("#shipment-alert").inner_text()
 
         page.locator("label").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()

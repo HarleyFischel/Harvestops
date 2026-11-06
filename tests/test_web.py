@@ -40,6 +40,17 @@ def test_export_requires_operator_role():
     assert "shipment_id" in response.text
 
 
+def test_shipment_detail_requires_viewer_and_returns_version():
+    app = make_app(Settings(app_env="development", demo_mode=True, identity_mode="demo"))
+    client = app.server.test_client()
+    assert client.get("/api/shipments/SHP-1004").status_code == 403
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    response = client.get("/api/shipments/SHP-1004")
+    assert response.status_code == 200
+    assert response.get_json()["version"] == 1
+    assert client.get("/api/shipments/unknown").status_code == 404
+
+
 def test_export_prefixes_formula_like_cells():
     app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
     client = app.server.test_client()
