@@ -212,6 +212,12 @@ def test_required_grid_and_purchase_callbacks_exist():
     callback_keys = set(app.callback_map)
     assert any("shipment-grid.rowData" in key for key in callback_keys)
     assert any("ship-page.data" in key for key in callback_keys)
+    callback_inputs = [
+        input_item
+        for callback in app.callback_map.values()
+        for input_item in callback.get("inputs", [])
+    ]
+    assert {item["id"] for item in callback_inputs}.issuperset({"ship-product", "ship-facility"})
     assert any("shipment-lookup-result.children" in key for key in callback_keys)
     assert any("confirm-status.displayed" in key for key in callback_keys)
     assert any("purchase-history.children" in key for key in callback_keys)

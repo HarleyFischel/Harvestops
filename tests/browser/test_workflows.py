@@ -18,6 +18,8 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         page.locator("label").filter(has_text="Dock & shipment board").click()
         page.get_by_role("heading", name="Dock & shipment board").wait_for()
         page.locator("#shipment-grid").wait_for()
+        assert page.locator("#ship-product").count() == 1
+        assert page.locator("#ship-facility").count() == 1
         assert page.get_by_text("Upload shipment CSV").count() == 1
         assert page.get_by_role("button", name="Apply status").count() == 1
         next_page = page.get_by_role("button", name="Next page")
@@ -29,6 +31,9 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         page.get_by_role("button", name="Find shipment").click()
         page.get_by_text("SHP-1001", exact=True).last.wait_for()
         assert page.get_by_text("FreshMart Northeast", exact=True).count() >= 1
+        page.locator("#ship-product").click()
+        page.get_by_text("Romaine Hearts", exact=True).first.click()
+        page.get_by_text(re.compile("2 matching shipments")).wait_for()
         page.locator("label").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_role("button", name="Create request").count() == 1

@@ -364,6 +364,30 @@ def shipments_view(store: InMemoryStore):
                     ),
                     html.Div(
                         [
+                            html.Label("Product"),
+                            dcc.Dropdown(
+                                id="ship-product",
+                                options=[{"label": "All", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["product"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Facility"),
+                            dcc.Dropdown(
+                                id="ship-facility",
+                                options=[{"label": "All", "value": "All"}]
+                                + [{"label": x, "value": x} for x in options["facility"]],
+                                value="All",
+                            ),
+                        ],
+                        className="filter-control",
+                    ),
+                    html.Div(
+                        [
                             html.Label("Exceptions only"),
                             dcc.Checklist(
                                 id="ship-exceptions",
@@ -1001,12 +1025,14 @@ def make_app(settings: Settings | None = None):
         Output("ship-next", "disabled"),
         Output("ship-pagination-label", "children"),
         Input("ship-customer", "value"),
+        Input("ship-product", "value"),
+        Input("ship-facility", "value"),
         Input("ship-exceptions", "value"),
         Input("ship-prev", "n_clicks"),
         Input("ship-next", "n_clicks"),
         State("ship-page", "data"),
     )
-    def refresh_shipments(customer, exception, _, __, stored_page):
+    def refresh_shipments(customer, product, facility, exception, _, __, stored_page):
         from dash import ctx
 
         page = max(1, int(stored_page or 1))
@@ -1015,13 +1041,25 @@ def make_app(settings: Settings | None = None):
         elif ctx.triggered_id == "ship-next":
             page += 1
         rows, total = store.list_shipments(
-            {"customer": customer, "exceptions_only": bool(exception)}, page, SHIPMENT_PAGE_SIZE
+            {
+                "customer": customer,
+                "product": product,
+                "facility": facility,
+                "exceptions_only": bool(exception),
+            },
+            page,
+            SHIPMENT_PAGE_SIZE,
         )
         max_page = max(1, math.ceil(total / SHIPMENT_PAGE_SIZE))
         safe_page = min(page, max_page)
         if safe_page != page:
             rows, total = store.list_shipments(
-                {"customer": customer, "exceptions_only": bool(exception)},
+                {
+                    "customer": customer,
+                    "product": product,
+                    "facility": facility,
+                    "exceptions_only": bool(exception),
+                },
                 safe_page,
                 SHIPMENT_PAGE_SIZE,
             )
