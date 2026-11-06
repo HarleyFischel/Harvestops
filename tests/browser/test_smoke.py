@@ -75,3 +75,18 @@ def test_dashboard_controls_use_compact_dimensions():
         assert radio_box is not None and radio_box["width"] <= 24 and radio_box["height"] <= 24
         assert dropdown_box is not None and dropdown_box["height"] <= 42
         browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_navigation_labels_do_not_wrap_at_sidebar_breakpoint():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 800, "height": 900})
+        page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
+        labels = page.locator(".nav-list label")
+        assert labels.count() == 4
+        for index in range(labels.count()):
+            label = labels.nth(index)
+            assert label.evaluate("element => getComputedStyle(element).whiteSpace") == "nowrap"
+            assert label.evaluate("element => element.scrollWidth <= element.clientWidth")
+        browser.close()

@@ -49,7 +49,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Docker daemon and ARM64/AMD64 image builds verified
 - [x] Python unit and service tests pass (latest run: 63 passed, 3 SQL integration tests skipped without connection details)
 - [x] Demo-mode runtime smoke test passes
-- [x] Browser smoke test passes against the local demo server (7 tests, repeated twice)
+- [x] Browser smoke test passes against the local demo server (8 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests (latest disposable rerun passed; both ran as UID 10001)
 - [x] Repeatable infrastructure configuration verification (Compose, Bicep, ADF JSON, and shell syntax)
 - [~] Full x86 SQL Server Compose runtime, migration, persistence, and backup/restore exercise pending on the intended x86-64 host
