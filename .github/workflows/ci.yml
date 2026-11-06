@@ -18,7 +18,10 @@ jobs:
       - run: ruff format --check .
       - run: pytest
       - run: ./scripts/test-mcp-stdio.sh
-      - run: python -m playwright install --with-deps chromium
+      - name: Install Playwright Chromium
+        # ubuntu-latest supplies the shared browser libraries; avoid the unbounded
+        # apt phase of --with-deps and keep the download explicitly time-bounded.
+        run: timeout 180s python -m playwright install chromium
       - run: (python -m harvestops.web > /tmp/harvestops.log 2>&1 & echo $! > /tmp/harvestops.pid)
       - name: Wait for Dash readiness
         run: |
