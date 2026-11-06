@@ -66,6 +66,15 @@ def test_export_prefixes_formula_like_cells():
     assert "'=HYPERLINK" in response.text
 
 
+def test_demo_session_role_injection_cannot_escalate_known_account():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    with client.session_transaction() as session:
+        session["roles"] = ["viewer", "admin"]
+    assert client.get("/api/shipments/export").status_code == 403
+
+
 def test_demo_identity_cannot_be_enabled_in_production():
     try:
         make_app(
@@ -308,6 +317,34 @@ def test_direct_dash_write_callback_without_csrf_does_not_mutate_state():
     detail = client.get("/api/shipments/SHP-1004")
     assert detail.get_json()["status"] == "Scheduled"
     assert detail.get_json()["version"] == 1
+
+
+def test_direct_dash_write_callback_viewer_cannot_mutate_with_valid_csrf():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    token = client.get("/api/csrf").get_json()["csrf_token"]
+    payload = {
+        "output": "shipment-alert.children",
+        "outputs": {"id": "shipment-alert", "property": "children"},
+        "inputs": [{"id": "confirm-status", "property": "submit_n_clicks", "value": 1}],
+        "state": [
+            {"id": "status-shipment-id", "property": "value", "value": "SHP-1004"},
+            {"id": "status-value", "property": "value", "value": "In Transit"},
+            {"id": "status-version", "property": "value", "value": 1},
+            {"id": "csrf-token", "property": "data", "value": token},
+            {"id": "csrf-status", "property": "data-csrf-token", "value": token},
+        ],
+        "changedPropIds": ["confirm-status.submit_n_clicks"],
+    }
+
+    response = client.post("/_dash-update-component", json=payload)
+    assert response.status_code == 200
+    assert response.get_json()["response"]["shipment-alert"]["children"] == (
+        "Could not apply change: Operator role required"
+    )
+    detail = client.get("/api/shipments/SHP-1004")
+    assert detail.get_json()["status"] == "Scheduled"
 
 
 def test_import_endpoint_is_authorized_and_idempotent():
