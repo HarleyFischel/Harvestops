@@ -56,7 +56,7 @@ Stop and restart Compose services with `docker compose -f compose.x86.yml stop` 
 - External SQL login mode plus Azure SQL managed-identity access-token mode; production SQL connections require encryption and certificate verification.
 - Read-only official MCP SDK tools, signed-token exchange example, React legacy lookup, benchmark harness, Compose, Codespaces, GitHub Actions, and Azure Container Apps Bicep.
 
-AG Grid Community is the only required grid feature. Enterprise features are not used.
+AG Grid Community is the only required grid feature. Enterprise features are not used; see [the grid feature boundary](docs/ag-grid.md) for separately documented alternatives.
 
 See docs/validation-report.md for actual evidence and unverified gates.
 

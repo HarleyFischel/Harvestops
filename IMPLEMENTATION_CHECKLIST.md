@@ -10,6 +10,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Flask + Plotly Dash shell with original HarvestOps styling
 - [x] Dashboard filters, KPI cards, Plotly charts, and shipment exceptions
 - [x] Shipment board with filtering, pagination, read-only lookup, status transitions, concurrency checks, export
+- [x] AG Grid Community-only implementation with separately documented Enterprise alternatives
 - [x] Purchasing request, submit, approve/reject, self-approval prevention, and history
 - [x] Demo authentication with server-side role checks
 - [x] Health/readiness endpoints and startup diagnostics
