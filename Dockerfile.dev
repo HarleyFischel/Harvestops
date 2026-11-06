@@ -12,5 +12,6 @@ COPY requirements-dev.lock ./
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir --require-hashes -r requirements-dev.lock
 COPY harvestops ./harvestops
 COPY knowledge ./knowledge
+COPY data ./data
 RUN pip install --no-cache-dir --no-deps -e .
 CMD ["python", "-m", "harvestops.web"]

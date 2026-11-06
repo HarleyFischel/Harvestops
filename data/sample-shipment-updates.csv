@@ -1,0 +1,4 @@
+shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status
+SHP-2101,City Market,Spring Mix,Salinas,GreenLine,D-07,2026-03-05T15:00:00Z,500,500,875,Scheduled
+SHP-1001,FreshMart Northeast,Iceberg Lettuce,Oxnard,Pacific Freight,D-04,2026-01-08T15:00:00Z,1200,1200,1250,Delivered
+SHP-2102,City Market,Spring Mix,Salinas,GreenLine,D-08,not-a-date,500,600,875,Scheduled

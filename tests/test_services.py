@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -135,6 +136,21 @@ def test_import_rejects_malformed_record_without_raising():
     result = store.import_shipments(csv_text, operator)
     assert result["applied"] == 0
     assert result["errors"][0]["error"] == "invalid shipment record"
+
+
+def test_repository_sample_import_fixture_is_repeatable_and_reports_invalid_row():
+    store = InMemoryStore()
+    operator = store.users["demo.operator"]
+    sample = Path(__file__).parents[1] / "data" / "sample-shipment-updates.csv"
+    csv_text = sample.read_text(encoding="utf-8")
+
+    first = store.import_shipments(csv_text, operator)
+    second = store.import_shipments(csv_text, operator)
+
+    assert first["applied"] == 1
+    assert first["errors"] == [{"line": 4, "error": "invalid shipment record"}]
+    assert second["applied"] == 0
+    assert second["errors"] == [{"line": 4, "error": "invalid shipment record"}]
 
 
 def test_csv_formula_injection_is_prefixed():

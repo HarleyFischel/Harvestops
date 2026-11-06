@@ -15,7 +15,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Health/readiness endpoints and startup diagnostics
 - [x] SQL Server-backed service adapter selected by STORAGE_MODE=sqlserver
 - [x] Viewer-protected shipment detail endpoint with current optimistic-concurrency version
-- [x] Shipment CSV upload/API workflow with validation, idempotency, and CSRF token check
+- [x] Shipment CSV upload/API workflow with validation, idempotency, CSRF token check, and repository sample fixture
 
 ## Milestone 2 — data, security, and tests
 
@@ -43,7 +43,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 
 - [ ] External SQL Server connection verified (blocked until connection details are provided)
 - [x] Docker daemon and ARM64/AMD64 image builds verified
-- [x] Python unit and service tests pass
+- [x] Python unit and service tests pass (42 passed, 2 SQL integration tests skipped without connection details)
 - [x] Demo-mode runtime smoke test passes
 - [x] Browser smoke test passes against the local demo server (6 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests

@@ -12,13 +12,14 @@ WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
 COPY pyproject.toml ./
 COPY requirements.lock ./
+COPY harvestops ./harvestops
+COPY db ./db
+COPY knowledge ./knowledge
+COPY data ./data
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir --require-hashes -r requirements.lock \
  && pip install --no-cache-dir --no-deps . \
  && pip uninstall -y pip
-COPY harvestops ./harvestops
-COPY db ./db
-COPY knowledge ./knowledge
 COPY harvestops/assets ./assets
 RUN chown -R appuser:appuser /app
 USER appuser
