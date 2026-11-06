@@ -75,7 +75,25 @@ class KnowledgeService:
             return []
         return [dict(item) for item in KPI_DEFINITIONS[: max(1, min(limit, len(KPI_DEFINITIONS)))]]
 
-    def answer_with_claude(self, query: str, documents: list[KnowledgeDocument]) -> dict:
+    def answer_with_claude(
+        self, query: str, documents: list[KnowledgeDocument], user: User | None
+    ) -> dict:
+        if not user:
+            return {
+                "status": "forbidden",
+                "message": "Authenticated principal is required for provider answers.",
+                "usage": {},
+            }
+        # Re-check authorization at the provider boundary. Callers should pass search
+        # results, but the adapter must never trust a pre-filtered document list before
+        # sending operating context outside the process.
+        documents = [document for document in documents if self._allowed(user, document)]
+        if not documents:
+            return {
+                "status": "forbidden",
+                "message": "No permitted operating documents were available for this answer.",
+                "usage": {},
+            }
         if not self.api_key:
             return {
                 "status": "unavailable",

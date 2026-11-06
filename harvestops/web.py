@@ -1145,7 +1145,7 @@ def make_app(settings: Settings | None = None):
                 ]
             )
         if mode == "claude":
-            result = knowledge.answer_with_claude(query, hits)
+            result = knowledge.answer_with_claude(query, hits, current_user(store))
             return html.Div(
                 [
                     html.Div("Claude answer mode · optional provider", className="mode-label"),
