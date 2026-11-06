@@ -66,10 +66,14 @@ class PortalTokenExchange:
         return jwt.encode(claims, self.private_key, algorithm="RS256", headers={"kid": self.key_id})
 
     def exchange(self, token: str) -> dict:
-        header = jwt.get_unverified_header(token)
-        if header.get("alg") != "RS256":
+        try:
+            header = jwt.get_unverified_header(token)
+        except jwt.PyJWTError as exc:
+            raise PermissionError("token algorithm or key id rejected") from exc
+        key_id = header.get("kid")
+        if header.get("alg") != "RS256" or not isinstance(key_id, str):
             raise PermissionError("token algorithm or key id rejected")
-        verification_key = self.verification_keys.get(header.get("kid", ""))
+        verification_key = self.verification_keys.get(key_id)
         if not verification_key:
             raise PermissionError("token algorithm or key id rejected")
         claims = jwt.decode(

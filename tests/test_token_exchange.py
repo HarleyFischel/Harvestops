@@ -1,3 +1,5 @@
+import base64
+import json
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -61,6 +63,37 @@ def test_portal_token_supports_overlapping_key_rotation(exchange):
     old_token = exchange.issue("demo.operator", ["operator"])
     assert rotated.exchange(old_token)["sub"] == "demo.operator"
     assert rotated.exchange(rotated.issue("demo.operator", ["operator"]))["sub"] == "demo.operator"
+
+
+def test_portal_token_rejects_unknown_or_malformed_key_id(exchange):
+    claims = {
+        "sub": "demo.operator",
+        "roles": ["operator"],
+        "iss": exchange.issuer,
+        "aud": exchange.audience,
+        "iat": datetime.now(timezone.utc),
+        "nbf": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=2),
+        "jti": "unknown-kid",
+    }
+    unknown = jwt.encode(
+        claims, exchange.private_key, algorithm="RS256", headers={"kid": "missing-key"}
+    )
+    valid_header_token = jwt.encode(
+        claims, exchange.private_key, algorithm="RS256", headers={"kid": "temporary-key"}
+    )
+    encoded_header = (
+        base64.urlsafe_b64encode(
+            json.dumps({"alg": "RS256", "typ": "JWT", "kid": ["not-a-string"]}).encode()
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    malformed = ".".join([encoded_header, *valid_header_token.split(".")[1:]])
+    with pytest.raises(PermissionError, match="key id"):
+        exchange.exchange(unknown)
+    with pytest.raises(PermissionError, match="key id"):
+        exchange.exchange(malformed)
 
 
 def test_redis_replay_store_uses_atomic_single_use_semantics():
