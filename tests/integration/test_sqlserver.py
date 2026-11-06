@@ -1,5 +1,7 @@
 import os
 import uuid
+from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -7,7 +9,25 @@ from harvestops.config import Settings
 from harvestops.repository import SqlServerRepository
 from harvestops.sql_store import SqlServerStore
 
-CONNECTION = os.getenv("SQLSERVER_INTEGRATION_CONNECTION")
+
+def _configured_connection():
+    direct = os.getenv("SQLSERVER_INTEGRATION_CONNECTION")
+    if direct:
+        return direct
+    server = os.getenv("SQL_SERVER")
+    database = os.getenv("SQL_DATABASE")
+    user = os.getenv("SQL_USER")
+    password = os.getenv("SQL_PASSWORD")
+    if not all((server, database, user, password)) or password == "replace-me":
+        return ""
+    return (
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"SERVER={server};DATABASE={database};UID={user};PWD={password};"
+        "Encrypt=no;TrustServerCertificate=yes;"
+    )
+
+
+CONNECTION = _configured_connection()
 pytestmark = pytest.mark.integration
 
 
@@ -137,3 +157,105 @@ def test_sql_import_status_change_and_audit_are_end_to_end():
                     second_run_id,
                 )
                 conn.commit()
+
+
+@pytest.mark.skipif(not CONNECTION, reason="SQLSERVER_INTEGRATION_CONNECTION is not configured")
+def test_sql_production_kpis_aggregate_labor_at_run_grain_and_apply_filters():
+    store = _sql_store()
+    repository = store.repository
+    baseline_customer = repository.production_kpis(
+        {
+            "facility": "Salinas",
+            "product": "Romaine Hearts",
+            "customer": "FreshMart Northeast",
+        }
+    )
+    run_ids: list[int] = []
+    with repository.connect() as conn:
+        facility_id = repository.rows(
+            conn.execute(
+                "SELECT facility_id FROM dbo.facilities WHERE facility_name = ?", "Salinas"
+            )
+        )[0]["facility_id"]
+        product_id = repository.rows(
+            conn.execute(
+                "SELECT product_id FROM dbo.products WHERE product_name = ?", "Romaine Hearts"
+            )
+        )[0]["product_id"]
+        for run_date, output_qty, labor_rows in (
+            (date(2026, 4, 10), Decimal("100"), (Decimal("10"), Decimal("5"))),
+            (date(2026, 4, 11), Decimal("200"), (Decimal("7"),)),
+        ):
+            run_id = int(
+                conn.execute(
+                    """INSERT dbo.production_runs(facility_id, product_id, run_date, output_qty, labor_hours)
+                       OUTPUT INSERTED.production_run_id
+                       VALUES (?, ?, ?, ?, ?)""",
+                    facility_id,
+                    product_id,
+                    run_date,
+                    output_qty,
+                    Decimal("999"),
+                ).fetchone()[0]
+            )
+            run_ids.append(run_id)
+            for labor_hours in labor_rows:
+                conn.execute(
+                    """INSERT dbo.labor_records(production_run_id, work_date, labor_group, labor_hours)
+                       VALUES (?, ?, ?, ?)""",
+                    run_id,
+                    run_date,
+                    "Regression crew",
+                    labor_hours,
+                )
+        conn.commit()
+
+    try:
+        bounded = repository.production_kpis(
+            {
+                "facility": "Salinas",
+                "product": "Romaine Hearts",
+                "start_date": "2026-04-10",
+                "end_date": "2026-04-11",
+            }
+        )
+        first_day = repository.production_kpis(
+            {
+                "facility": "Salinas",
+                "product": "Romaine Hearts",
+                "start_date": "2026-04-10",
+                "end_date": "2026-04-10",
+            }
+        )
+        customer_scoped = repository.production_kpis(
+            {
+                "facility": "Salinas",
+                "product": "Romaine Hearts",
+                "customer": "FreshMart Northeast",
+            }
+        )
+
+        expected_bounded = {"production_output": Decimal("300"), "labor_hours": Decimal("22")}
+        expected_first_day = {"production_output": Decimal("100"), "labor_hours": Decimal("15")}
+        assert Decimal(bounded["production_output"]) == expected_bounded["production_output"]
+        assert Decimal(bounded["labor_hours"]) == expected_bounded["labor_hours"]
+        assert Decimal(first_day["production_output"]) == expected_first_day["production_output"]
+        assert Decimal(first_day["labor_hours"]) == expected_first_day["labor_hours"]
+        assert Decimal(customer_scoped["production_output"]) - Decimal(
+            baseline_customer["production_output"]
+        ) == Decimal("300.000")
+        assert Decimal(customer_scoped["labor_hours"]) - Decimal(
+            baseline_customer["labor_hours"]
+        ) == Decimal("22.00")
+    finally:
+        with repository.connect() as conn:
+            placeholders = ", ".join("?" for _ in run_ids)
+            conn.execute(
+                f"DELETE FROM dbo.labor_records WHERE production_run_id IN ({placeholders})",
+                *run_ids,
+            )
+            conn.execute(
+                f"DELETE FROM dbo.production_runs WHERE production_run_id IN ({placeholders})",
+                *run_ids,
+            )
+            conn.commit()

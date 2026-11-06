@@ -267,6 +267,33 @@ def test_entra_callback_rejects_invalid_state_before_redeeming_code():
     assert response.get_json()["error"] == "invalid identity state"
 
 
+def test_knowledge_document_route_enforces_document_roles_and_blocks_static_paths():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    client.get("/")
+
+    forbidden = client.get("/knowledge/documents/purchasing.md")
+    assert forbidden.status_code == 403
+    assert b"requester cannot approve" not in forbidden.data
+    former_static = client.get("/assets/knowledge/purchasing.md")
+    assert former_static.status_code == 404
+    assert b"requester cannot approve" not in former_static.data
+    assert client.get("/knowledge/documents/../purchasing.md").status_code == 404
+
+    csrf = client.get("/api/csrf").get_json()["csrf_token"]
+    assert (
+        client.post(
+            "/auth/demo",
+            json={"username": "demo.approver"},
+            headers={"X-CSRF-Token": csrf},
+        ).status_code
+        == 200
+    )
+    permitted = client.get("/knowledge/documents/purchasing.md")
+    assert permitted.status_code == 200
+    assert b"requester cannot approve" in permitted.data
+
+
 def test_dash_surface_redirects_unauthenticated_entra_requests():
     settings = Settings(
         identity_mode="entra",

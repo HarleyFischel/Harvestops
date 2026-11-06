@@ -5,6 +5,7 @@ import math
 import secrets
 from functools import wraps
 from pathlib import Path
+from urllib.parse import quote
 
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, dash_table, dcc, html, no_update
@@ -668,6 +669,23 @@ def knowledge_view():
     )
 
 
+def knowledge_citations(documents):
+    return [
+        html.Div(
+            [
+                "Source: ",
+                html.A(
+                    document.source,
+                    href=f"/knowledge/documents/{quote(Path(document.source).name)}",
+                    target="_blank",
+                    rel="noreferrer",
+                ),
+            ]
+        )
+        for document in documents
+    ]
+
+
 def make_app(settings: Settings | None = None):
     settings = settings or get_settings()
     errors = settings.validate_for_runtime()
@@ -771,19 +789,35 @@ def make_app(settings: Settings | None = None):
         if settings.identity_mode != "entra":
             return jsonify({"error": "Entra identity is disabled"}), 403
         state = secrets.token_urlsafe(32)
-        session["entra_state"] = state
-        return redirect(EntraAuth(settings).login_url(state))
+        flow = EntraAuth(settings).begin(state)
+        session["entra_flow"] = flow
+        session["entra_state"] = flow.get("state", state)
+        return redirect(flow["auth_uri"])
 
-    @server.get("/auth/callback")
+    @server.route("/auth/callback", methods=["GET", "POST"])
     def entra_callback():
         if settings.identity_mode != "entra":
             return jsonify({"error": "Entra identity is disabled"}), 403
-        supplied_state = request.args.get("state", "")
-        expected_state = session.pop("entra_state", "")
+        auth_response = (
+            request.form.to_dict(flat=True)
+            if request.method == "POST"
+            else request.args.to_dict(flat=True)
+        )
+        flow = session.pop("entra_flow", None)
+        stored_state = session.pop("entra_state", "")
+        expected_state = (flow or {}).get("state") or stored_state
+        supplied_state = auth_response.get("state", "")
         if not expected_state or not secrets.compare_digest(supplied_state, expected_state):
             return jsonify({"error": "invalid identity state"}), 400
-        claims = EntraAuth(settings).redeem(request.args.to_dict())
+        if not flow:
+            return jsonify({"error": "invalid identity flow"}), 400
+        try:
+            claims = EntraAuth(settings).redeem(flow, auth_response)
+        except PermissionError as exc:
+            return jsonify({"error": str(exc)}), 401
         principal = claims.get("preferred_username") or claims.get("email") or claims.get("sub")
+        if not principal:
+            return jsonify({"error": "Entra identity did not include a principal"}), 401
         role_map = {
             "HarvestOps.Operator": "operator",
             "HarvestOps.Approver": "approver",
@@ -794,6 +828,9 @@ def make_app(settings: Settings | None = None):
             claim_roles = [claim_roles]
         roles = {"viewer"} | {role_map[r] for r in claim_roles if r in role_map}
         display_name = claims.get("name", principal)
+        if hasattr(server.session_interface, "regenerate"):
+            server.session_interface.regenerate(session)
+        session.clear()
         session["roles"] = sorted(roles)
         session["display_name"] = display_name
         session["identity"] = "entra"
@@ -801,6 +838,23 @@ def make_app(settings: Settings | None = None):
         session["username"] = principal
         session.permanent = True
         return jsonify({"username": principal, "roles": sorted(roles), "identity": "entra"})
+
+    @server.get("/knowledge/documents/<path:document_name>")
+    def knowledge_document(document_name):
+        user = current_user(store)
+        if not user:
+            return jsonify({"error": "authentication required"}), 401
+        if Path(document_name).name != document_name or "\\" in document_name:
+            return jsonify({"error": "document not found"}), 404
+        document = knowledge.document_for_name(document_name)
+        if not document:
+            return jsonify({"error": "document not found"}), 404
+        if not knowledge._allowed(user, document):
+            return jsonify({"error": "forbidden"}), 403
+        response = make_response(knowledge.document_text(document))
+        response.headers["Content-Type"] = "text/markdown; charset=utf-8"
+        response.headers["Content-Disposition"] = "inline"
+        return response
 
     @server.post("/auth/logout")
     def logout():
@@ -1248,7 +1302,7 @@ def make_app(settings: Settings | None = None):
                         f"Usage metadata: {result['usage'] or 'not available'}",
                         className="section-subtitle",
                     ),
-                    html.Div([f"Source: {doc.source}" for doc in hits], className="citation"),
+                    html.Div(knowledge_citations(hits), className="citation"),
                 ]
             )
         return html.Div(
@@ -1256,7 +1310,7 @@ def make_app(settings: Settings | None = None):
                 html.Div("Local search", className="mode-label"),
                 html.H3(hits[0].title),
                 html.P(hits[0].body),
-                html.Div([f"Source: {doc.source}" for doc in hits], className="citation"),
+                html.Div(knowledge_citations(hits), className="citation"),
             ]
         )
 

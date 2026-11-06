@@ -90,6 +90,18 @@ jobs:
   sql-integration:
     if: ${{ vars.SQLSERVER_INTEGRATION_ENABLED == 'true' }}
     runs-on: ubuntu-latest
+    env:
+      APP_ENV: development
+      DEMO_MODE: 'true'
+      IDENTITY_MODE: demo
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: localhost,1433
+      SQL_DATABASE: HarvestOps
+      SQL_USER: sa
+      SQL_PASSWORD: ${{ secrets.SQLSERVER_TEST_PASSWORD }}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: 'false'
+      SQL_TRUST_SERVER_CERTIFICATE: 'true'
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04
@@ -100,7 +112,7 @@ jobs:
         ports:
           - 1433:1433
         options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P '${{ secrets.SQLSERVER_TEST_PASSWORD }}' -Q 'SELECT 1'"
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1'"
           --health-interval 15s --health-timeout 5s --health-retries 30
     steps:
       - uses: actions/checkout@v4
@@ -116,12 +128,8 @@ jobs:
       - run: pip install --require-hashes -r requirements-dev.lock
       - run: pip install --no-deps -e .
       - name: Create integration database
-        run: sqlcmd -C -S localhost -U sa -P '${{ secrets.SQLSERVER_TEST_PASSWORD }}' -Q "IF DB_ID(N'HarvestOps') IS NULL CREATE DATABASE HarvestOps"
+        run: sqlcmd -C -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASSWORD" -Q "IF DB_ID(N'HarvestOps') IS NULL CREATE DATABASE HarvestOps"
       - name: Apply T-SQL migrations
-        env:
-          SQLSERVER_MIGRATION_CONNECTION: "DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost,1433;DATABASE=HarvestOps;UID=sa;PWD=${{ secrets.SQLSERVER_TEST_PASSWORD }};Encrypt=no;TrustServerCertificate=yes;"
         run: python db/run_migrations.py
       - name: Run SQL integration tests
-        env:
-          SQLSERVER_INTEGRATION_CONNECTION: "DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost,1433;DATABASE=HarvestOps;UID=sa;PWD=${{ secrets.SQLSERVER_TEST_PASSWORD }};Encrypt=no;TrustServerCertificate=yes;"
         run: pytest tests/integration -q

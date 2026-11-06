@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from urllib import request as urlrequest
 
 from .domain import User
@@ -18,7 +19,7 @@ class KnowledgeDocument:
 DOCUMENTS = (
     KnowledgeDocument(
         "KPI definitions",
-        "Shipment volume counts shipments in scope. Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments. Freight cost is the sum of shipment freight cost. Production output is the sum of production-run output, and labor productivity is output divided by labor hours.",
+        "Shipment volume counts shipments in scope. Fill rate is shipped quantity divided by ordered quantity. On-time rate is on-time departures divided by closed shipments. Freight cost is the sum of shipment freight cost. Production output is the sum of production-run output, and labor productivity is output divided by aggregated labor-record hours. A customer filter selects matching shipment activity but does not attribute production to a customer because production runs have no customer ownership.",
         "knowledge/kpi-definitions.md",
     ),
     KnowledgeDocument(
@@ -55,6 +56,22 @@ class KnowledgeService:
     @staticmethod
     def _allowed(user: User | None, document: KnowledgeDocument) -> bool:
         return bool(user and user.roles.intersection(document.roles))
+
+    @staticmethod
+    def document_for_name(document_name: str) -> KnowledgeDocument | None:
+        """Resolve only an inventoried document basename; never accept a filesystem path."""
+        if not document_name or Path(document_name).name != document_name:
+            return None
+        return next(
+            (document for document in DOCUMENTS if Path(document.source).name == document_name),
+            None,
+        )
+
+    @staticmethod
+    def document_text(document: KnowledgeDocument) -> str:
+        """Read the known document outside Dash's public assets directory."""
+        document_path = Path(__file__).resolve().parent.parent / document.source
+        return document_path.read_text(encoding="utf-8")
 
     def search(self, query: str, user: User | None, limit: int = 3) -> list[KnowledgeDocument]:
         terms = [term for term in (query or "").lower().split() if term]

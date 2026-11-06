@@ -2,6 +2,17 @@
 
 Date: 2026-11-06. Host: Apple Silicon M2, 8 GiB RAM, macOS. The current verification environment is `.venv` with Python 3.13.14; the supported Python 3.12 environment was also installed and exercised earlier. At the SQL verification start, Docker reported approximately 3.82 GiB available to its VM and macOS reported approximately 124 GiB free on `/System/Volumes/Data`. Docker CLI/server 29.8.0 and an ARM64 daemon were available.
 
+## Current authoritative status (2026-11-06)
+
+- Hardening is implemented for the SQL production/labor KPI grain, MSAL authorization-code flow, protected knowledge documents, and the GitHub Actions SQL service configuration. The current source remains compatible with demo authentication; Entra is fail-closed unless explicitly configured.
+- Local unit/service/security tests: `67 passed, 4 skipped` with `PYTHONPATH=. .venv/bin/pytest -ra`. The skips are the four SQL integration cases when no connection is supplied to the host process; the same suite ran separately against the persistent SQL Server below.
+- Persistent SQL integration: `4 passed` in a disposable test container on the existing private Docker network. This includes the multi-labor-row/multi-run KPI regression and cleans up only its inserted rows.
+- Isolated ARM64 application verification: image `harvestops:hardening-arm64` built successfully; an isolated container on port 8052 returned `/healthz` 200, `/readyz` 200, Dash root 200, demo login 200, and viewer access to the approver-only document 403. Playwright against that isolated instance passed `9 tests`.
+- AMD64 application verification: image `harvestops:hardening-amd64` built successfully and `docker image inspect` reported `linux/amd64`. It was not substituted for the ARM64 running app.
+- The live local service was not replaced during this checkpoint. It remains the preserved SQL-backed service on `http://127.0.0.1:8050`; the Cloudflare-backed `/healthz` and `/readyz` checks were healthy before hardening work. GitHub Actions has not yet been rerun for the new commit.
+- Backup protection: `./backups/HarvestOps-20261106T212305Z.bak` was created before database-affecting verification. The original database and named volume were not deleted.
+- Remaining gates: push the corrected workflow, configure the CI-only `SQLSERVER_TEST_PASSWORD` secret and `SQLSERVER_INTEGRATION_ENABLED=true` repository variable, observe the hosted run, then replace 8050 only after the final commit is verified. Live Entra, Azure, remote MCP/Claude, and external Proxmox SQL remain account-dependent.
+
 ## M2 Mac SQL profile verification (2026-11-06)
 
 - `docker run --rm --platform linux/amd64 alpine:3.20 uname -m` returned `x86_64`, confirming that Docker Desktop's current emulation path is available. No Docker Desktop security setting was changed and no unrelated container was restarted.
@@ -16,7 +27,7 @@ Date: 2026-11-06. Host: Apple Silicon M2, 8 GiB RAM, macOS. The current verifica
 - Observed resource use after startup: SQL Server approximately 903 MiB of its 2.5 GiB limit; app approximately 96 MiB of its 768 MiB limit. Docker reported 120 GiB free on the host filesystem. Existing Nova and Honcho containers remained running.
 - After the isolated checks passed, the original demo process was stopped and the ignored Mac profile port was changed from 8051 to 8050. The active local endpoint is now `http://127.0.0.1:8050` and reports `mode=sqlserver`; `/healthz`, `/readyz`, all 9 browser checks, and unauthenticated 403 checks passed there. No public Cloudflare hostname was claimed as verified; no tunnel process was visible in this workspace.
 
-## Completed evidence
+## Historical evidence (prior checkpoints)
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
