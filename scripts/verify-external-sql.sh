@@ -25,7 +25,7 @@ if errors:
 repository = SqlServerRepository(settings)
 repository.ping()
 database = repository.query("SELECT DB_NAME() AS database_name")[0]["database_name"]
-print({"server": settings.sql_server, "database": database, "auth_mode": settings.sql_auth_mode, "tls_verified": not settings.sql_trust_server_certificate})
+print({"server": settings.sql_server, "database": database, "auth_mode": settings.sql_auth_mode, "tls_verified": settings.sql_encrypt and not settings.sql_trust_server_certificate})
 '
 
 if [[ "${RUN_MIGRATIONS:-false}" == "true" ]]; then
