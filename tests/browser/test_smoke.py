@@ -90,3 +90,19 @@ def test_navigation_labels_do_not_wrap_at_sidebar_breakpoint():
             assert label.evaluate("element => getComputedStyle(element).whiteSpace") == "nowrap"
             assert label.evaluate("element => element.scrollWidth <= element.clientWidth")
         browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_header_spans_common_ipad_widths_without_horizontal_overflow():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        for width in (744, 768, 834, 1024):
+            page = browser.new_page(viewport={"width": width, "height": 1024})
+            page.goto(
+                os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle"
+            )
+            header = page.locator(".topbar").bounding_box()
+            assert header is not None and round(header["width"]) == width
+            assert page.evaluate("document.documentElement.scrollWidth") <= width
+            page.close()
+        browser.close()
