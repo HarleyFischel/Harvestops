@@ -1,0 +1,26 @@
+{
+  "name": "HarvestOpsShipmentImportSchedule",
+  "properties": {
+    "annotations": ["UNVERIFIED TEMPLATE - deploy and test before use"],
+    "type": "ScheduleTrigger",
+    "typeProperties": {
+      "recurrence": {
+        "frequency": "Hour",
+        "interval": 1,
+        "startTime": "2026-01-01T00:00:00Z",
+        "timeZone": "UTC"
+      }
+    },
+    "pipelines": [
+      {
+        "pipelineReference": {
+          "type": "PipelineReference",
+          "referenceName": "HarvestOpsShipmentImport"
+        },
+        "parameters": {
+          "import_run_id": "@int(formatDateTime(trigger().scheduledTime, 'yyyyMMddHHmm'))"
+        }
+      }
+    ]
+  }
+}

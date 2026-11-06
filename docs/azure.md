@@ -6,6 +6,8 @@ Prerequisites: Azure CLI, an existing subscription/resource group, ACR permissio
 
 The template expects an existing Key Vault and four secret URIs: SQL password, Redis session URL, the application secret key, and the Entra client secret. It grants the Container App user-assigned identity `Key Vault Secrets User` on that vault and `AcrPull` on the ACR. Create the SQL contained user separately and grant only the required database roles (`db_datareader`, `db_datawriter`, and `EXECUTE` on approved procedures). The template supplies the required production `IDENTITY_MODE=entra`, SQL login, Entra settings, verified SQL TLS settings, and Redis-backed session settings.
 
+The ADF examples are `adf/pipeline-shipment-import.json` and `adf/trigger-shipment-import.json`. The trigger is an unverified UTC hourly example; deploy it only after configuring linked services, datasets, source paths, and the target Azure SQL connection.
+
 The release workflow is manual and requires environment-scoped variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `ACR_NAME`, `ACR_LOGIN_SERVER`, `RESOURCE_GROUP`, and `CONTAINER_APP_NAME`. With no `image_digest` input it logs into ACR through the federated Azure identity, pushes the AMD64 image with SHA/version tags, updates the app to the resulting immutable digest, and performs a `/healthz` smoke check. For staging-to-production promotion, pass the previously recorded `sha256:...` digest as `image_digest`; that path updates the app without rebuilding. GitHub environment approval rules must be configured in repository settings; YAML alone cannot create plan-dependent protections.
 
 Validate only:
