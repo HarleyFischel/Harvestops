@@ -11,7 +11,15 @@ from redis import Redis
 from harvestops.token_exchange import PortalTokenExchange, RedisReplayStore
 
 replay = RedisReplayStore(Redis.from_url("redis://localhost:6379/0"))
-exchange = PortalTokenExchange(private_key, public_key, issuer, audience, replay=replay)
+exchange = PortalTokenExchange(
+    private_key,
+    public_key,
+    issuer,
+    audience,
+    replay=replay,
+    key_id="harvestops-key-2",
+    verification_keys={"harvestops-key-1": previous_public_key},
+)
 ```
 
 The default in-memory store is retained only for isolated local tests. Redis connectivity and production key distribution are not verified in this environment.

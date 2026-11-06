@@ -39,6 +39,30 @@ def test_portal_token_rejects_wrong_audience(exchange):
         other.exchange(token)
 
 
+def test_portal_token_supports_overlapping_key_rotation(exchange):
+    rotated_private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    rotated_private_pem = rotated_private.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ).decode()
+    rotated_public_pem = (
+        rotated_private.public_key()
+        .public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode()
+    )
+    rotated = PortalTokenExchange(
+        rotated_private_pem,
+        rotated_public_pem,
+        exchange.issuer,
+        exchange.audience,
+        key_id="demo-key-2",
+        verification_keys={"demo-key-1": exchange.public_key},
+    )
+
+    old_token = exchange.issue("demo.operator", ["operator"])
+    assert rotated.exchange(old_token)["sub"] == "demo.operator"
+    assert rotated.exchange(rotated.issue("demo.operator", ["operator"]))["sub"] == "demo.operator"
+
+
 def test_redis_replay_store_uses_atomic_single_use_semantics():
     class FakeRedis:
         def __init__(self):

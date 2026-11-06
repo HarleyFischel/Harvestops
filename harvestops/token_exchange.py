@@ -37,6 +37,8 @@ class PortalTokenExchange:
         issuer: str,
         audience: str,
         replay: ReplayStore | None = None,
+        key_id: str = "demo-key-1",
+        verification_keys: dict[str, str] | None = None,
     ):
         self.private_key, self.public_key, self.issuer, self.audience = (
             private_key,
@@ -45,6 +47,9 @@ class PortalTokenExchange:
             audience,
         )
         self.replay = replay or ReplayStore()
+        self.key_id = key_id
+        self.verification_keys = dict(verification_keys or {})
+        self.verification_keys.setdefault(key_id, public_key)
 
     def issue(self, subject: str, roles: list[str]) -> str:
         now = datetime.now(timezone.utc)
@@ -58,17 +63,18 @@ class PortalTokenExchange:
             "exp": now + timedelta(minutes=2),
             "jti": secrets.token_urlsafe(16),
         }
-        return jwt.encode(
-            claims, self.private_key, algorithm="RS256", headers={"kid": "demo-key-1"}
-        )
+        return jwt.encode(claims, self.private_key, algorithm="RS256", headers={"kid": self.key_id})
 
     def exchange(self, token: str) -> dict:
         header = jwt.get_unverified_header(token)
-        if header.get("alg") != "RS256" or header.get("kid") != "demo-key-1":
+        if header.get("alg") != "RS256":
+            raise PermissionError("token algorithm or key id rejected")
+        verification_key = self.verification_keys.get(header.get("kid", ""))
+        if not verification_key:
             raise PermissionError("token algorithm or key id rejected")
         claims = jwt.decode(
             token,
-            self.public_key,
+            verification_key,
             algorithms=["RS256"],
             issuer=self.issuer,
             audience=self.audience,
