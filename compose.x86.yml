@@ -21,6 +21,20 @@ services:
         limits:
           cpus: "2.0"
           memory: 4G
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/amd64]
+    platform: linux/amd64
+    env_file: .env
+    environment:
+      SQLSERVER_MIGRATION_CONNECTION: "DRIVER={ODBC Driver 18 for SQL Server};SERVER=sqlserver,1433;DATABASE=${SQL_DATABASE:-HarvestOps};UID=sa;PWD=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};Encrypt=no;TrustServerCertificate=yes;"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["python", "db/run_migrations.py"]
+    restart: "no"
   app:
     build:
       context: .
@@ -35,8 +49,8 @@ services:
       SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
       SQL_TRUST_SERVER_CERTIFICATE: "true"
     depends_on:
-      sqlserver:
-        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     ports:
       - "8050:8050"
     restart: unless-stopped
