@@ -32,6 +32,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `infra/parameters.dev.json`, `infra/parameters.staging.json`, and `infra/parameters.prod.json` all parse successfully and cover every required Bicep parameter; they contain placeholders only and no credentials.
 - The ADF template now explicitly adds the pipeline `import_run_id` to each staged row and avoids shared-table truncation; local JSON validation passed, but ADF deployment and execution remain unverified.
 - The unverified ADF example now includes a separate UTC hourly `ScheduleTrigger` template that passes a deterministic run id expression to the pipeline; both ADF JSON files parse locally.
+- A tracked-file secret-pattern scan found no private-key, common API-key, or credential-file matches; the repository's hosted Gitleaks job remains the authoritative CI check.
 - `docker compose config -q` passed for `compose.mac.yml`, `compose.x86.yml`, and `docker-compose.yml` using an ephemeral validation password.
 - The web app now selects `SqlServerStore` when `STORAGE_MODE=sqlserver`; the adapter uses parameterized queries, SQL-side paging/counts, transactions, rowversion checks, and audit inserts. This code path is implementation-checked but not live-connection verified.
 - SQL shipment imports now stage parsed rows in `staging.shipment_updates` and execute the versioned validation/apply procedure before reporting applied and rejected rows; this implementation path is not live-connection verified.
