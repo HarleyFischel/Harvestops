@@ -1,10 +1,10 @@
 {
   "name": "HarvestOpsShipmentImport",
   "properties": {
-    "annotations": ["UNVERIFIED TEMPLATE - deploy and test before use"],
+    "annotations": ["UNVERIFIED TEMPLATE - deploy and test before use", "Map every staged row to the pipeline import_run_id; do not truncate shared staging"],
     "parameters": { "import_run_id": { "type": "Int" } },
     "activities": [
-      { "name": "CopyToStaging", "type": "Copy", "typeProperties": { "source": { "type": "DelimitedTextSource" }, "sink": { "type": "AzureSqlSink", "preCopyScript": "IF OBJECT_ID('staging.shipment_updates','U') IS NULL CREATE TABLE staging.shipment_updates (import_run_id bigint NOT NULL, source_row_no int NOT NULL, shipment_id nvarchar(30), customer_name nvarchar(120), product_name nvarchar(120), facility_name nvarchar(120), carrier_name nvarchar(120), dock_code nvarchar(20), planned_departure_utc datetime2(0), ordered_qty decimal(18,3), shipped_qty decimal(18,3), freight_cost decimal(18,2), status nvarchar(30), validation_error nvarchar(500)); TRUNCATE TABLE staging.shipment_updates;" } } },
+      { "name": "CopyToStaging", "type": "Copy", "typeProperties": { "source": { "type": "DelimitedTextSource" }, "sink": { "type": "AzureSqlSink", "preCopyScript": "IF OBJECT_ID('staging.shipment_updates','U') IS NULL CREATE TABLE staging.shipment_updates (import_run_id bigint NOT NULL, source_row_no int NOT NULL, shipment_id nvarchar(30), customer_name nvarchar(120), product_name nvarchar(120), facility_name nvarchar(120), carrier_name nvarchar(120), dock_code nvarchar(20), planned_departure_utc datetime2(0), ordered_qty decimal(18,3), shipped_qty decimal(18,3), freight_cost decimal(18,2), status nvarchar(30), validation_error nvarchar(500));" } } },
       { "name": "ValidateAndApply", "type": "SqlServerStoredProcedure", "typeProperties": { "storedProcedureName": "dbo.usp_apply_shipment_import", "storedProcedureParameters": { "import_run_id": { "value": "@pipeline().parameters.import_run_id", "type": "Int64" } } } }
     ]
   }
