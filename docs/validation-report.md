@@ -1,6 +1,6 @@
 # Validation report
 
-Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual environment. Disk: approximately 170 GiB free at start. Docker CLI/server 29.8.0, Docker Desktop, and an ARM64 daemon were available after the initial inspection.
+Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS. The current verification environment is `.venv` with Python 3.13.14; the supported Python 3.12 environment was also installed and exercised earlier. Disk: approximately 170 GiB free at start. Docker CLI/server 29.8.0, Docker Desktop, and an ARM64 daemon were available after the initial inspection.
 
 ## Completed evidence
 
@@ -16,6 +16,9 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - `uvx --from pip-audit==2.9.0 pip-audit --strict` completed locally with `No known vulnerabilities found`.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
+- Latest rerun: `./scripts/test.sh` passed 53 tests with 2 SQL-dependent tests skipped; Ruff lint, format, and `git diff --check` passed; `./scripts/test-mcp-stdio.sh` passed; and the live demo again returned `/healthz` 200, `/readyz` ready, and root HTTP 200.
+- Latest browser rerun passed all 6 Playwright smoke checks against the live demo, covering dashboard rendering, shipment and purchasing workflows, responsive desktop/tablet/mobile content, and focus visibility.
+- Latest disposable-container rerun passed for `harvestops:arm64-token-hardening` (`sha256:de617d7a984df0995507dffe81113a62403767dd3e2c60b9df58a60e455416b0`) and `harvestops:amd64-token-hardening` (`sha256:6aee99e56a211da7ab73819e3b653a2cf7b521a50b99429d75eb6e1c87ed8a59`): both returned health/readiness, served the Dash root, imported required modules/assets, and ran as UID 10001.
 - Playwright Chromium was installed and browser smoke passed 6 tests against the local server: desktop dashboard/date-range rendering, shipment-board and purchasing-screen surfaces, an authenticated shipment status workflow including confirmation, a purchase approval workflow, 390px mobile and 768px tablet responsive-content checks, and a visible keyboard/programmatic focus indicator check.
 - The same 6 browser smoke tests were rerun twice against the refreshed `.venv` application after the workflow/API and responsive styling changes and passed both times.
 - After the managed-identity changes, `./scripts/test-browser.sh` passed all 6 tests again when run with host-level permission for macOS Chromium. An unprivileged attempt failed before test execution with Chromium's macOS `bootstrap_check_in ... Permission denied`; this is an execution-environment restriction, not an application assertion failure.
