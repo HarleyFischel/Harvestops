@@ -8,26 +8,26 @@ version = "0.1.0"
 description = "Synthetic produce operations portfolio application"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-  "dash==2.18.2",
+  "dash==3.3.0",
   "dash-ag-grid==31.3.0",
-  "Flask==3.0.3",
+  "Flask==3.1.3",
   "Flask-Session==0.8.0",
   "gunicorn==23.0.0",
   "plotly==5.24.1",
   "pydantic-settings==2.6.1",
   "pydantic==2.12.5",
   "pyodbc==5.2.0",
-  "PyJWT==2.14.0",
+  "PyJWT==2.15.0",
   "cryptography==50.0.0",
   "msal==1.39.0",
-  "mcp==1.28.1",
+  "mcp==1.30.0",
   "redis==5.2.1",
   "azure-identity==1.25.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest==8.3.3",
+  "pytest==9.0.3",
   "pytest-cov==6.0.0",
   "ruff==0.8.4",
   "playwright==1.49.1",
