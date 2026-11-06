@@ -2,12 +2,13 @@
 
 import os
 import time
-
-import pyodbc
+from importlib import import_module
 
 CONNECTION = os.environ.get("SQLSERVER_MIGRATION_CONNECTION")
 if not CONNECTION:
     raise SystemExit("Set SQLSERVER_MIGRATION_CONNECTION before running this benchmark")
+
+pyodbc = import_module("pyodbc")
 
 with pyodbc.connect(CONNECTION, autocommit=True) as conn:
     cur = conn.cursor()
