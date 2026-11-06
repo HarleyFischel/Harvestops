@@ -17,6 +17,18 @@ class ReplayStore:
         return True
 
 
+class RedisReplayStore:
+    """Shared, atomic replay protection for multi-worker deployments."""
+
+    def __init__(self, redis_client, prefix: str = "harvestops:portal-replay:"):
+        self.redis = redis_client
+        self.prefix = prefix
+
+    def consume(self, jti: str, expiry: datetime) -> bool:
+        ttl = max(1, int((expiry - datetime.now(timezone.utc)).total_seconds()))
+        return bool(self.redis.set(f"{self.prefix}{jti}", "1", nx=True, ex=ttl))
+
+
 class PortalTokenExchange:
     def __init__(self, private_key: str, public_key: str, issuer: str, audience: str, replay: ReplayStore | None = None):
         self.private_key, self.public_key, self.issuer, self.audience = private_key, public_key, issuer, audience

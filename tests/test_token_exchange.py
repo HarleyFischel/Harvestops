@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.exceptions import ExpiredSignatureError, InvalidAudienceError, InvalidSignatureError
 
-from harvestops.token_exchange import PortalTokenExchange
+from harvestops.token_exchange import PortalTokenExchange, RedisReplayStore
 
 
 @pytest.fixture
@@ -29,6 +29,25 @@ def test_portal_token_rejects_wrong_audience(exchange):
     other = PortalTokenExchange(exchange.private_key, exchange.public_key, exchange.issuer, "other-audience")
     with pytest.raises(InvalidAudienceError):
         other.exchange(token)
+
+
+def test_redis_replay_store_uses_atomic_single_use_semantics():
+    class FakeRedis:
+        def __init__(self):
+            self.values = set()
+
+        def set(self, key, value, nx, ex):
+            assert nx is True
+            assert ex > 0
+            if key in self.values:
+                return False
+            self.values.add(key)
+            return True
+
+    store = RedisReplayStore(FakeRedis())
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=2)
+    assert store.consume("jti-1", expiry) is True
+    assert store.consume("jti-1", expiry) is False
 
 
 def test_portal_token_rejects_tampering_and_expiry(exchange):
