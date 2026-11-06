@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, State, dash_table, dcc, html, no_update
+from dash import Dash, Input, Output, State, ctx, dash_table, dcc, html, no_update
 from dash_ag_grid import AgGrid
 from flask import Flask, has_request_context, jsonify, make_response, redirect, request, session
 
@@ -112,17 +112,39 @@ def build_layout(store: InMemoryStore, settings: Settings):
                     html.Aside(
                         [
                             html.Div("WORKSPACE", className="eyebrow"),
-                            dcc.RadioItems(
-                                id="nav",
-                                options=[
-                                    {"label": "Operations dashboard", "value": "dashboard"},
-                                    {"label": "Dock & shipment board", "value": "shipments"},
-                                    {"label": "Purchasing approvals", "value": "purchasing"},
-                                    {"label": "Knowledge assistant", "value": "knowledge"},
+                            html.Nav(
+                                [
+                                    html.Button(
+                                        "Operations dashboard",
+                                        id="nav-dashboard",
+                                        className="nav-item active",
+                                        n_clicks=0,
+                                        type="button",
+                                    ),
+                                    html.Button(
+                                        "Dock & shipment board",
+                                        id="nav-shipments",
+                                        className="nav-item",
+                                        n_clicks=0,
+                                        type="button",
+                                    ),
+                                    html.Button(
+                                        "Purchasing approvals",
+                                        id="nav-purchasing",
+                                        className="nav-item",
+                                        n_clicks=0,
+                                        type="button",
+                                    ),
+                                    html.Button(
+                                        "Knowledge assistant",
+                                        id="nav-knowledge",
+                                        className="nav-item",
+                                        n_clicks=0,
+                                        type="button",
+                                    ),
                                 ],
-                                value="dashboard",
                                 className="nav-list",
-                                labelClassName="nav-item",
+                                **{"aria-label": "Primary navigation"},
                             ),
                             html.Div("DEMO ACCOUNT", className="eyebrow side-space")
                             if demo_identity
@@ -933,14 +955,35 @@ def make_app(settings: Settings | None = None):
     )
     app.layout = lambda: build_layout(store, settings)
 
-    @app.callback(Output("page-content", "children"), Input("nav", "value"))
-    def switch_page(page):
-        return {
+    @app.callback(
+        Output("page-content", "children"),
+        Output("nav-dashboard", "className"),
+        Output("nav-shipments", "className"),
+        Output("nav-purchasing", "className"),
+        Output("nav-knowledge", "className"),
+        Input("nav-dashboard", "n_clicks"),
+        Input("nav-shipments", "n_clicks"),
+        Input("nav-purchasing", "n_clicks"),
+        Input("nav-knowledge", "n_clicks"),
+    )
+    def switch_page(*_clicks):
+        page = {
+            "nav-dashboard": "dashboard",
+            "nav-shipments": "shipments",
+            "nav-purchasing": "purchasing",
+            "nav-knowledge": "knowledge",
+        }.get(ctx.triggered_id, "dashboard")
+        view = {
             "dashboard": dashboard_view(store),
             "shipments": shipments_view(store),
             "purchasing": purchasing_view(store),
             "knowledge": knowledge_view(),
         }.get(page, dashboard_view(store))
+        classes = [
+            f"nav-item{' active' if selected == page else ''}"
+            for selected in ("dashboard", "shipments", "purchasing", "knowledge")
+        ]
+        return view, *classes
 
     @app.callback(
         Output("csrf-token", "data"),
@@ -1146,7 +1189,10 @@ def make_app(settings: Settings | None = None):
             return html.Div(
                 [
                     html.Strong(shipment.shipment_id),
-                    html.Span(f" · {shipment.customer} · {shipment.product}"),
+                    html.Span(" · "),
+                    html.Span(shipment.customer),
+                    html.Span(" · "),
+                    html.Span(shipment.product),
                     html.Div(f"{shipment.facility} · {shipment.status}"),
                 ],
                 className="lookup-detail",

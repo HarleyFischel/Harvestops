@@ -15,7 +15,7 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
-        page.locator("label").filter(has_text="Dock & shipment board").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
         page.get_by_role("heading", name="Dock & shipment board").wait_for()
         page.locator("#shipment-grid").wait_for()
         assert page.locator("#ship-product").count() == 1
@@ -34,7 +34,7 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         page.locator("#ship-product").click()
         page.get_by_text("Romaine Hearts", exact=True).first.click()
         page.get_by_text(re.compile("2 matching shipments")).wait_for()
-        page.locator("label").filter(has_text="Purchasing approvals").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_role("button", name="Create request").count() == 1
         assert page.get_by_role("button", name="Submit for approval").count() == 1
@@ -62,7 +62,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
             page.locator("#csrf-status").get_by_text("ready").wait_for()
 
         login_demo("demo.operator")
-        page.locator("label").filter(has_text="Dock & shipment board").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
         page.get_by_role("heading", name="Dock & shipment board").wait_for()
         shipment = page.evaluate("""async () => (await fetch('/api/shipments/SHP-1004')).json()""")
         assert shipment["shipment_id"] == "SHP-1004"
@@ -83,7 +83,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         )
         assert f"Updated SHP-1004 to {next_status}" in page.locator("#shipment-alert").inner_text()
 
-        page.locator("label").filter(has_text="Purchasing approvals").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_text("PR-1002", exact=True).count() >= 1
         page.locator("#purchase-qty").fill("4")
@@ -98,7 +98,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         alert.get_by_text(re.compile("Submitted " + request_id)).wait_for()
 
         login_demo("demo.approver")
-        page.locator("label").filter(has_text="Purchasing approvals").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         page.locator("#decision-request-id").fill(request_id)
         page.locator("#decision-value").click()

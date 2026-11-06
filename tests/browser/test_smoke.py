@@ -55,7 +55,7 @@ def test_keyboard_focus_indicator_is_visible():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
-        page.locator("label").filter(has_text="Dock & shipment board").click()
+        page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
         button = page.get_by_role("button", name="Apply status")
         button.wait_for()
         button.focus()
@@ -69,10 +69,10 @@ def test_dashboard_controls_use_compact_dimensions():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
-        radio = page.locator(".nav-list input[type='radio']").first
-        radio_box = radio.bounding_box()
+        assert page.locator(".nav-list input[type='radio']").count() == 0
+        nav_box = page.locator(".nav-list .nav-item").first.bounding_box()
         dropdown_box = page.locator(".filter-control .Select-control").first.bounding_box()
-        assert radio_box is not None and radio_box["width"] <= 24 and radio_box["height"] <= 24
+        assert nav_box is not None and nav_box["height"] <= 42
         assert dropdown_box is not None and dropdown_box["height"] <= 42
         browser.close()
 
@@ -83,7 +83,7 @@ def test_navigation_labels_do_not_wrap_at_sidebar_breakpoint():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 800, "height": 900})
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
-        labels = page.locator(".nav-list label")
+        labels = page.locator(".nav-list .nav-item")
         assert labels.count() == 4
         for index in range(labels.count()):
             label = labels.nth(index)

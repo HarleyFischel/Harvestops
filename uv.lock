@@ -347,7 +347,7 @@ wheels = [
 
 [[package]]
 name = "dash"
-version = "3.3.0"
+version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flask" },
@@ -360,21 +360,21 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/f9/516671861cf190bda37f6afa696d8a6a6ac593f23d8cf198e16faca044f5/dash-3.3.0.tar.gz", hash = "sha256:eaaa7a671540b5e1db8066f4966d0277d21edc2c7acdaec2fd6d198366a8b0df", size = 7579436, upload-time = "2025-11-12T15:51:54.919Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/7c/8569c50a4c07fabee6b2428a1515c0c92247e2127367b438a9f99d69723c/dash-3.1.1.tar.gz", hash = "sha256:916b31cec46da0a3339da0e9df9f446126aa7f293c0544e07adf9fe4ba060b18", size = 7544441, upload-time = "2025-06-30T15:31:30.518Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/cf/a4853e5b2b2bea55ae909095a8720b3ed50d07bdd40cbeafcedb5a6c47da/dash-3.3.0-py3-none-any.whl", hash = "sha256:8f52415977f7490492dd8a3872279160be8ff253ca9f4d49a4e3ba747fa4bd91", size = 7919707, upload-time = "2025-11-12T15:51:47.432Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/df/267614cbc1003f6982d7078fd5c7591778f75e07bf36d4771fcb2eab8ff1/dash-3.1.1-py3-none-any.whl", hash = "sha256:66fff37e79c6aa114cd55aea13683d1e9afe0e3f96b35388baca95ff6cfdad23", size = 7885616, upload-time = "2025-06-30T15:31:22.768Z" },
 ]
 
 [[package]]
 name = "dash-ag-grid"
-version = "31.3.0"
+version = "35.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dash" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/36/a9da325e066c18bdc8373d22f4751af79d6de999557c4822cfd7ebe5ef5c/dash_ag_grid-31.3.0.tar.gz", hash = "sha256:8f609601d25225a53130d5a2da1f43c685dc640c777a7de80bbaa070ded3d19c", size = 3858138, upload-time = "2024-11-22T16:13:13.818Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/77/966331b34607378bb404fda988528b4fcb26f43169aa0e1548e76f0363b2/dash_ag_grid-35.3.0.tar.gz", hash = "sha256:012f7e7d5bff4862d1377ccb545ae2c80577e7909e118a88f1c408ff03a2403e", size = 6009070, upload-time = "2026-07-15T17:04:48.657Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/be/bbca053d741cc6ae5333bf3263be520c308b122cd3e4d720fd598231809b/dash_ag_grid-31.3.0-py3-none-any.whl", hash = "sha256:a174c00b816d03a969c5af61a60f8f6b61af5a9b7058633c86424db99e62875b", size = 3876384, upload-time = "2024-11-22T16:13:10.618Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/c8/c56a0278b1a6789f53c162313136ddba2fce175209bb958d7d43898f8355/dash_ag_grid-35.3.0-py3-none-any.whl", hash = "sha256:7cc0ca54fe8be4deab044d89975819f6e9ac66904c84310becbf68cdce74a4e9", size = 6051445, upload-time = "2026-07-15T17:04:46.364Z" },
 ]
 
 [[package]]
@@ -505,8 +505,8 @@ dev = [
 requires-dist = [
     { name = "azure-identity", specifier = "==1.25.1" },
     { name = "cryptography", specifier = "==50.0.0" },
-    { name = "dash", specifier = "==3.3.0" },
-    { name = "dash-ag-grid", specifier = "==31.3.0" },
+    { name = "dash", specifier = "==3.1.1" },
+    { name = "dash-ag-grid", specifier = "==35.3.0" },
     { name = "flask", specifier = "==3.1.3" },
     { name = "flask-session", specifier = "==0.8.0" },
     { name = "gunicorn", specifier = "==23.0.0" },
