@@ -8,9 +8,9 @@ React lookup can be evaluated before migrating the workflow into the Dash applic
 | Concern | React sample | HarvestOps Dash equivalent | Verification boundary |
 | --- | --- | --- | --- |
 | Route/surface | Vite root page at `/` | Dash **Dock & shipment board** page | Both render a shipment-facing surface |
-| Input | `Shipment ID` input, trimmed on change | Shipment board grid plus `/api/shipments/<shipment_id>` detail route | `SHP-1001` is the shared lookup fixture |
+| Input | `Shipment ID` input, trimmed on change | Shipment board’s visible read-only lookup plus `/api/shipments/<shipment_id>` detail route | `SHP-1001` is the shared lookup fixture |
 | Matching | Case-insensitive exact match in the local fixture | Server-side repository/service lookup by shipment ID | Detail endpoint is role-protected and returns 404 for a miss |
-| Result | Customer, product, facility, and status | Grid/detail data exposes the same business fields | Synthetic records are the source of truth for the demo |
+| Result | Customer, product, facility, and status | Visible lookup result and protected detail route expose the same business fields | Synthetic records are the source of truth for the demo |
 | Empty/error state | “No shipment found.” after a non-empty miss | HTTP 404 JSON error and the board’s empty/failure states | No result is not treated as success |
 | Authorization | Not implemented in this isolated read-only sample | Viewer/operator/admin server-side role checks | React is not a production security boundary |
 | State changes | None | Status changes, import, and approvals remain in the Dash workflow | The migration sample deliberately has no write controls |

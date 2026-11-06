@@ -211,6 +211,7 @@ def test_required_grid_and_purchase_callbacks_exist():
     callback_keys = set(app.callback_map)
     assert any("shipment-grid.rowData" in key for key in callback_keys)
     assert any("ship-page.data" in key for key in callback_keys)
+    assert any("shipment-lookup-result.children" in key for key in callback_keys)
     assert any("confirm-status.displayed" in key for key in callback_keys)
     assert any("purchase-history.children" in key for key in callback_keys)
     assert any("import-report.children" in key for key in callback_keys)

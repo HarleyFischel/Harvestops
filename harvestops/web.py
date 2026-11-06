@@ -370,6 +370,28 @@ def shipments_view(store: InMemoryStore):
                 ],
                 className="filter-row",
             ),
+            html.Div(
+                [
+                    section_heading(
+                        "Shipment lookup",
+                        "Read-only detail lookup; state changes remain in the controlled form below.",
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Shipment ID", htmlFor="shipment-lookup-id"),
+                            dcc.Input(id="shipment-lookup-id", placeholder="SHP-1001"),
+                            html.Button(
+                                "Find shipment",
+                                id="shipment-lookup-submit",
+                                className="button secondary",
+                            ),
+                        ],
+                        className="inline-form",
+                    ),
+                    html.Div(id="shipment-lookup-result", role="status"),
+                ],
+                className="panel",
+            ),
             html.Div(id="shipment-alert", className="alert"),
             html.Div(
                 freshness_text(store.import_freshness()),
@@ -1005,6 +1027,34 @@ def make_app(settings: Settings | None = None):
             safe_page >= max_page,
             f"Page {safe_page} of {max_page}",
         )
+
+    @app.callback(
+        Output("shipment-lookup-result", "children"),
+        Input("shipment-lookup-submit", "n_clicks"),
+        State("shipment-lookup-id", "value"),
+        prevent_initial_call=True,
+    )
+    def lookup_shipment_details(_, shipment_id):
+        try:
+            user = current_user(store)
+            if not user or not user.roles.intersection({"viewer", "operator", "admin"}):
+                raise PermissionError("Viewer role required")
+            normalized_id = str(shipment_id or "").strip().upper()
+            if not normalized_id or len(normalized_id) > 30:
+                raise ValueError("Enter a shipment ID under 30 characters")
+            shipment = store.get_shipment(normalized_id)
+            if not shipment:
+                return empty_state("No shipment found for that ID.")
+            return html.Div(
+                [
+                    html.Strong(shipment.shipment_id),
+                    html.Span(f" · {shipment.customer} · {shipment.product}"),
+                    html.Div(f"{shipment.facility} · {shipment.status}"),
+                ],
+                className="lookup-detail",
+            )
+        except (PermissionError, ValueError) as exc:
+            return empty_state(f"Lookup failed: {exc}")
 
     @app.callback(
         Output("confirm-status", "displayed"),

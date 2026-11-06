@@ -25,6 +25,10 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         assert next_page.is_enabled()
         next_page.click()
         page.get_by_text("Page 2 of 2", exact=True).wait_for()
+        page.locator("#shipment-lookup-id").fill("shp-1001")
+        page.get_by_role("button", name="Find shipment").click()
+        page.get_by_text("SHP-1001", exact=True).last.wait_for()
+        assert page.get_by_text("FreshMart Northeast", exact=True).count() >= 1
         page.locator("label").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_role("button", name="Create request").count() == 1
