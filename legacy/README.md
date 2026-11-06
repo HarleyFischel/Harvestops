@@ -16,4 +16,7 @@ Feature-parity checklist:
 - [x] Perform read-only work with no write controls.
 - [x] Provide the equivalent Dash workflow in the main application’s shipment board.
 
-Verification is recorded in `docs/validation-report.md`: `npm ci`, `npm run build`, and the production dependency audit passed. Migration trade-offs: Dash keeps server-side authorization, SQL paging, audit/workflow callbacks, and one Python deployment surface; React offers independently deployable client routing/state but would need an API boundary, shared validation, and additional operational ownership for parity.
+The full mapping, verification boundary, and migration trade-offs are recorded in
+[`feature-parity.md`](feature-parity.md) and [`../docs/validation-report.md`](../docs/validation-report.md). The React
+sample uses the same synthetic shipment IDs as the main app, but it is intentionally
+read-only and is not a production authorization boundary.
