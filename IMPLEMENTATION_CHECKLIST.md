@@ -49,5 +49,6 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Demo-mode runtime smoke test passes
 - [x] Browser smoke test passes against the local demo server (6 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests (latest disposable rerun passed; both ran as UID 10001)
+- [x] Repeatable infrastructure configuration verification (Compose, Bicep, ADF JSON, and shell syntax)
 - [~] Full x86 SQL Server Compose runtime, migration, persistence, and backup/restore exercise pending on the intended x86-64 host
 - [~] Azure deployment and migration-job validation are configuration-only until credentials are supplied

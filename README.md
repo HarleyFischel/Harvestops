@@ -38,6 +38,8 @@ For the Mac external database, apply migrations explicitly after reviewing `.env
 
 To preflight the external database from the ARM64 Mac application image, run `./scripts/verify-external-sql.sh` after configuring `.env`. It performs a TLS/configuration check and `SELECT DB_NAME()` against the configured server without starting SQL Server locally. Add `RUN_MIGRATIONS=true` only when you have reviewed and authorized applying the versioned migrations.
 
+Validate infrastructure configuration without Azure credentials with `./scripts/verify-infrastructure.sh`. It renders all Compose files, validates ADF and parameter JSON, checks shell syntax, and compiles the Bicep template in the official Azure CLI container; it does not authenticate or provision resources.
+
 On the x86-64 development host, run `MSSQL_SA_PASSWORD='...' ./scripts/backup-restore-x86.sh` for a repeatable backup/restore exercise. It copies a timestamped backup into `./backups`, replaces only the disposable `HarvestOps_restore` database, and runs read-only shipment/migration smoke queries. Review and protect the copied backup; do not use this script as a production backup policy.
 
 Stop and restart Compose services with `docker compose -f compose.x86.yml stop` and `docker compose -f compose.x86.yml start` (or use the equivalent `compose.mac.yml` command). Use `docker compose ... down` to remove the containers while retaining named volumes. `docker compose -f compose.x86.yml down -v` deletes the `sqlserver-data` volume and destroys the local SQL Server database unless it has been backed up.
