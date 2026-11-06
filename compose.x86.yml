@@ -21,6 +21,28 @@ services:
         limits:
           cpus: "2.0"
           memory: 4G
+  database-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/amd64]
+    platform: linux/amd64
+    env_file: .env
+    environment:
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: master
+      SQL_USER: sa
+      SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+      HARVESTOPS_TARGET_DATABASE: ${SQL_DATABASE:-HarvestOps}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: ["python", "db/ensure_database.py"]
+    restart: "no"
   migrations:
     build:
       context: .
@@ -29,10 +51,17 @@ services:
     platform: linux/amd64
     env_file: .env
     environment:
-      SQLSERVER_MIGRATION_CONNECTION: "DRIVER={ODBC Driver 18 for SQL Server};SERVER=sqlserver,1433;DATABASE=${SQL_DATABASE:-HarvestOps};UID=sa;PWD=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};Encrypt=no;TrustServerCertificate=yes;"
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: ${SQL_DATABASE:-HarvestOps}
+      SQL_USER: sa
+      SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
     depends_on:
-      sqlserver:
-        condition: service_healthy
+      database-init:
+        condition: service_completed_successfully
     command: ["python", "db/run_migrations.py"]
     restart: "no"
   app:
@@ -45,8 +74,11 @@ services:
     environment:
       STORAGE_MODE: sqlserver
       SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: ${SQL_DATABASE:-HarvestOps}
       SQL_USER: sa
       SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
       SQL_TRUST_SERVER_CERTIFICATE: "true"
     depends_on:
       migrations:

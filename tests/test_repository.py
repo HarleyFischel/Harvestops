@@ -1,7 +1,10 @@
 import sys
 from types import SimpleNamespace
 
-from db import run_migrations
+import pytest
+
+from db import ensure_database, run_migrations
+from db.ensure_database import quote_database_name
 from harvestops.config import Settings
 from harvestops.repository import SqlServerRepository
 
@@ -40,6 +43,61 @@ def test_sql_login_connection_string_quotes_punctuation_in_credentials():
     connection = repository.connection_string()
     assert "UID={app;user};" in connection
     assert "PWD={p;word}}};" in connection
+
+
+def test_database_bootstrap_only_accepts_safe_identifiers():
+    assert quote_database_name("HarvestOps_2026") == "[HarvestOps_2026]"
+    with pytest.raises(ValueError):
+        quote_database_name("HarvestOps; DROP DATABASE master")
+
+
+def test_database_bootstrap_creates_missing_database_on_master(monkeypatch):
+    captured = {}
+
+    class Result:
+        def fetchone(self):
+            return (None,)
+
+    class Connection:
+        autocommit = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def execute(self, statement, *params):
+            captured.setdefault("statements", []).append((statement, params))
+            return Result()
+
+    class Repository:
+        def __init__(self, settings):
+            captured["database"] = settings.sql_database
+
+        def connect(self):
+            return Connection()
+
+    monkeypatch.setenv("HARVESTOPS_TARGET_DATABASE", "HarvestOps")
+    monkeypatch.setattr(
+        ensure_database,
+        "get_settings",
+        lambda: Settings(
+            storage_mode="sqlserver",
+            sql_server="sql.example",
+            sql_database="HarvestOps",
+            sql_user="sa",
+            sql_password="password",
+            sql_encrypt=False,
+            sql_trust_server_certificate=True,
+        ),
+    )
+    monkeypatch.setattr(ensure_database, "SqlServerRepository", Repository)
+
+    assert ensure_database.ensure_database() == "HarvestOps"
+    assert captured["database"] == "master"
+    assert captured["statements"][0] == ("SELECT DB_ID(?)", ("HarvestOps",))
+    assert captured["statements"][1][0] == "CREATE DATABASE [HarvestOps]"
 
 
 def test_azure_identity_connection_uses_sql_access_token(monkeypatch):

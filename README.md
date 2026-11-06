@@ -32,7 +32,7 @@ No SQL Server emulation is required or started on the Mac. The SQL Server Develo
 
     MSSQL_SA_PASSWORD='Use-a-long-local-only-password!' docker compose -f compose.x86.yml up --build
 
-The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sqlserver-data. Its one-shot `migrations` service waits for SQL Server readiness and applies the versioned T-SQL before the app starts; rerun it with `docker compose -f compose.x86.yml run --rm migrations` when needed. Local TrustServerCertificate=true is only for the documented development container; production must use certificate verification.
+The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sqlserver-data. Its one-shot `database-init` service creates the configured database on a fresh volume, then the one-shot `migrations` service applies versioned T-SQL before the app starts; rerun migrations with `docker compose -f compose.x86.yml run --rm migrations` when needed. Local `SQL_ENCRYPT=false` and `TrustServerCertificate=true` are only for this documented development container; production must use encryption and certificate verification.
 
 For the Mac external database, apply migrations explicitly after reviewing `.env`: `docker compose -f compose.mac.yml run --rm app python db/run_migrations.py`.
 
