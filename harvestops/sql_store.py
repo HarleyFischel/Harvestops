@@ -105,6 +105,33 @@ class SqlServerStore:
             "errors": int(row["rejected_count"]),
         }
 
+    def import_history(self, limit: int = 5) -> list[dict]:
+        limit = max(1, min(int(limit), 20))
+        runs = self.repository.query(
+            f"SELECT TOP ({limit}) import_run_id, source_name, status, started_utc, completed_utc, applied_count, rejected_count "
+            "FROM dbo.import_runs ORDER BY import_run_id DESC"
+        )
+        history = []
+        for row in runs:
+            errors = self.repository.query(
+                "SELECT TOP (20) source_row_no AS line, error_message AS error "
+                "FROM dbo.import_errors WHERE import_run_id = ? ORDER BY import_error_id",
+                (row["import_run_id"],),
+            )
+            history.append(
+                {
+                    "run_id": f"IMP-{int(row['import_run_id']):04d}",
+                    "source": row["source_name"],
+                    "status": row["status"],
+                    "occurred_utc": (row["completed_utc"] or row["started_utc"])
+                    .replace(tzinfo=timezone.utc)
+                    .isoformat(),
+                    "applied": int(row["applied_count"]),
+                    "errors": errors,
+                }
+            )
+        return history
+
     def kpis(self, filters: dict) -> dict:
         shipment = self.repository.shipment_kpis(filters)
         production = self.repository.production_kpis(filters)

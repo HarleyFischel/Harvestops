@@ -318,6 +318,9 @@ class InMemoryStore:
             "errors": len(run["errors"]),
         }
 
+    def import_history(self, limit: int = 5) -> list[dict]:
+        return list(reversed(self.import_runs))[: max(1, min(limit, 20))]
+
     def list_purchases(self, actor: User | None) -> list[PurchaseRequest]:
         if not actor:
             return []

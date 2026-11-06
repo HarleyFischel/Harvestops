@@ -182,6 +182,7 @@ def test_required_grid_and_purchase_callbacks_exist():
     assert any("shipment-grid.rowData" in key for key in callback_keys)
     assert any("confirm-status.displayed" in key for key in callback_keys)
     assert any("purchase-history.children" in key for key in callback_keys)
+    assert any("import-report.children" in key for key in callback_keys)
 
 
 def test_entra_routes_are_closed_in_demo_mode():

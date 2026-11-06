@@ -175,6 +175,39 @@ def freshness_text(metadata: dict) -> str:
     return f"Data freshness · {metadata['source']} · {metadata['status']} · {metadata['occurred_utc']} UTC · {metadata['applied']} applied · {metadata['errors']} rejected"
 
 
+def import_report_children(history: list[dict]):
+    if not history:
+        return [empty_state("No shipment import runs have been recorded yet.")]
+    runs = []
+    for run in history:
+        errors = run.get("errors", [])
+        error_list = (
+            html.Ul(
+                [html.Li(f"Row {error['line']}: {error['error']}") for error in errors],
+                className="import-errors",
+            )
+            if errors
+            else html.Div("No rejected rows", className="section-subtitle")
+        )
+        runs.append(
+            html.Div(
+                [
+                    html.Strong(f"{run['run_id']} · {run['source']}"),
+                    html.Div(
+                        f"{run['status']} · {run['occurred_utc']} UTC · {run['applied']} applied · {len(errors)} rejected",
+                        className="section-subtitle",
+                    ),
+                    error_list,
+                ],
+                className="import-run",
+            )
+        )
+    return [
+        section_heading("Import history", "Validation runs and rejected records"),
+        html.Div(runs, className="import-runs"),
+    ]
+
+
 def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
     return html.Div(
@@ -324,6 +357,11 @@ def shipments_view(store: InMemoryStore):
                 id="import-freshness",
                 className="freshness-note",
                 role="status",
+            ),
+            html.Div(
+                import_report_children(store.import_history()),
+                id="import-report",
+                className="import-report",
             ),
             dcc.ConfirmDialog(id="confirm-status", message="Apply this shipment status change?"),
             AgGrid(
@@ -942,6 +980,7 @@ def make_app(settings: Settings | None = None):
     @app.callback(
         Output("shipment-alert", "children", allow_duplicate=True),
         Output("import-freshness", "children"),
+        Output("import-report", "children"),
         Input("shipment-import-upload", "contents"),
         State("shipment-import-upload", "filename"),
         State("csrf-token", "data"),
@@ -964,9 +1003,10 @@ def make_app(settings: Settings | None = None):
             return (
                 f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC.",
                 freshness_text(store.import_freshness()),
+                import_report_children(store.import_history()),
             )
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
-            return f"Import failed: {exc}", no_update
+            return f"Import failed: {exc}", no_update, no_update
 
     @app.callback(
         Output("purchase-alert", "children"),

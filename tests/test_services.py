@@ -112,6 +112,19 @@ def test_import_freshness_reports_seed_then_latest_run():
     assert freshness["occurred_utc"] == result["occurred_utc"]
 
 
+def test_import_history_includes_rejected_rows():
+    store = InMemoryStore()
+    operator = store.users["demo.operator"]
+    result = store.import_shipments(
+        "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,ordered_qty,shipped_qty,freight_cost,status\n"
+        "SHP-2097,City Market,Spring Mix,Salinas,GreenLine,D-07,not-a-date,500,500,875,Scheduled\n",
+        operator,
+    )
+    history = store.import_history()
+    assert history[0]["run_id"] == result["run_id"]
+    assert history[0]["errors"][0]["error"] == "invalid shipment record"
+
+
 def test_import_rejects_malformed_record_without_raising():
     store = InMemoryStore()
     operator = store.users["demo.operator"]
