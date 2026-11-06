@@ -208,6 +208,7 @@ def test_session_claims_reconstruct_entra_principal_across_workers():
 
 def test_required_grid_and_purchase_callbacks_exist():
     app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    assert "page-loading" in str(app.layout())
     callback_keys = set(app.callback_map)
     assert any("shipment-grid.rowData" in key for key in callback_keys)
     assert any("ship-page.data" in key for key in callback_keys)
