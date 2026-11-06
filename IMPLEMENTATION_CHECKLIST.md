@@ -9,7 +9,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] Deterministic synthetic domain data and KPI calculations
 - [x] Flask + Plotly Dash shell with original HarvestOps styling
 - [x] Dashboard filters, KPI cards, Plotly charts, and shipment exceptions
-- [x] Shipment board with filtering, pagination, status transitions, concurrency checks, export
+- [x] Shipment board with filtering, pagination, read-only lookup, status transitions, concurrency checks, export
 - [x] Purchasing request, submit, approve/reject, self-approval prevention, and history
 - [x] Demo authentication with server-side role checks
 - [x] Health/readiness endpoints and startup diagnostics
@@ -24,7 +24,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] pyodbc repository with parameterized SQL and UTC policy
 - [x] SQL login mode for external SQL Server and Azure SQL managed-identity access-token mode
 - [x] CSV validation/import with idempotency, staging semantics, and audit trail
-- [x] Knowledge search with permission filtering and optional Claude adapter boundary
+- [x] Knowledge search with permission filtering, provider-boundary recheck, and optional Claude adapter boundary
 - [x] Signed-token exchange example with JOSE validation and replay store
 - [x] Negative authorization and workflow tests
 - [x] Portal token tamper, expiry, audience, and replay tests
