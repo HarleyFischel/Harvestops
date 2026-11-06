@@ -16,7 +16,8 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS. The current verifica
 - `uvx --from pip-audit==2.9.0 pip-audit --strict` completed locally with `No known vulnerabilities found`.
 - Flask test-client smoke checks returned /healthz 200 and /readyz ready in demo mode.
 - Direct local server checks returned /healthz 200 and Dash HTTP 200 on http://127.0.0.1:8050.
-- Latest rerun: `./scripts/test.sh` passed 54 tests with 2 SQL-dependent tests skipped; Ruff lint, format, and `git diff --check` passed; `./scripts/test-mcp-stdio.sh` passed; and the live demo again returned `/healthz` 200, `/readyz` ready, and root HTTP 200.
+- Latest rerun before the direct-callback regression test: `./scripts/test.sh` passed 54 tests with 2 SQL-dependent tests skipped; Ruff lint, format, and `git diff --check` passed; `./scripts/test-mcp-stdio.sh` passed; and the live demo again returned `/healthz` 200, `/readyz` ready, and root HTTP 200.
+- After adding the direct Dash write-callback CSRF regression test, `./scripts/test.sh` passed 55 tests with 2 SQL-dependent tests skipped; the new test sent a callback request with both CSRF channels absent and verified the shipment remained unchanged.
 - Latest browser rerun passed all 6 Playwright smoke checks against the live demo, covering dashboard rendering, shipment and purchasing workflows, responsive desktop/tablet/mobile content, and focus visibility.
 - After migration 008 and the labor-record KPI change, the restarted current-source demo again passed all 6 Playwright browser smoke checks.
 - After the bounded shipment-pagination update, the current-source browser suite passed all 6 checks and exercised the server-side Next page control to reach page 2.
