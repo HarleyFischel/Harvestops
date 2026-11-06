@@ -17,7 +17,7 @@ Deploy only with explicit authorization:
 
     az deployment group create --resource-group "$RESOURCE_GROUP" --template-file infra/main.bicep --parameters @infra/parameters.dev.json
 
-Use separate parameter files for development, staging, and production. Roll back by redeploying the prior immutable image digest and only then applying backward-compatible database changes.
+Use `infra/parameters.dev.json`, `infra/parameters.staging.json`, and `infra/parameters.prod.json` as separate environment templates. Replace every documented placeholder through deployment-time configuration; do not commit secret values. Roll back by redeploying the prior immutable image digest and only then applying backward-compatible database changes.
 
 Cleanup requires explicit authorization because it can delete billable resources and data. For a disposable resource group, review the resource list and then run:
 
