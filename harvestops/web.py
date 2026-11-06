@@ -370,7 +370,7 @@ def make_app(settings: Settings | None = None):
                 raise PermissionError("Operator role required")
             _, encoded = contents.split(",", 1)
             result = store.import_shipments(base64.b64decode(encoded).decode("utf-8"), user)
-            return f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected."
+            return f"Imported {result['applied']} records from {filename or 'upload'}; {len(result['errors'])} rejected. Run {result['run_id']} at {result['occurred_utc']} UTC."
         except (DomainError, PermissionError, ValueError, UnicodeDecodeError) as exc:
             return f"Import failed: {exc}"
 
