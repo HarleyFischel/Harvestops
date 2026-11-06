@@ -20,10 +20,26 @@ def test_sql_login_connection_string_is_parameterized_by_configuration():
     )
 
     connection = repository.connection_string()
-    assert "SERVER=sql.example,1433" in connection
-    assert "DATABASE=HarvestOps" in connection
+    assert "SERVER={sql.example,1433}" in connection
+    assert "DATABASE={HarvestOps}" in connection
     assert "Encrypt=yes;TrustServerCertificate=no" in connection
-    assert "UID=app_user;PWD=secret-value" in connection
+    assert "UID={app_user};PWD={secret-value}" in connection
+
+
+def test_sql_login_connection_string_quotes_punctuation_in_credentials():
+    repository = SqlServerRepository(
+        Settings(
+            sql_server="sql.example,1433",
+            sql_database="HarvestOps",
+            sql_auth_mode="sql_login",
+            sql_user="app;user",
+            sql_password="p;word}",
+        )
+    )
+
+    connection = repository.connection_string()
+    assert "UID={app;user};" in connection
+    assert "PWD={p;word}}};" in connection
 
 
 def test_azure_identity_connection_uses_sql_access_token(monkeypatch):

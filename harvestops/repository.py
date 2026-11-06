@@ -9,17 +9,26 @@ class SqlServerRepository:
     def __init__(self, settings: Settings):
         self.settings = settings
 
+    @staticmethod
+    def _odbc_value(value: object) -> str:
+        """Quote an ODBC value so env-configured punctuation cannot break parsing."""
+        return "{" + str(value).replace("}", "}}") + "}"
+
     def connection_string(self) -> str:
         trust = "yes" if self.settings.sql_trust_server_certificate else "no"
         encrypt = "yes" if self.settings.sql_encrypt else "no"
         connection = (
             "DRIVER={ODBC Driver 18 for SQL Server};"
-            f"SERVER={self.settings.sql_server};DATABASE={self.settings.sql_database};"
+            f"SERVER={self._odbc_value(self.settings.sql_server)};"
+            f"DATABASE={self._odbc_value(self.settings.sql_database)};"
             f"Encrypt={encrypt};TrustServerCertificate={trust};"
             f"Connection Timeout={self.settings.sql_connection_timeout};"
         )
         if self.settings.sql_auth_mode == "sql_login":
-            connection += f"UID={self.settings.sql_user};PWD={self.settings.sql_password};"
+            connection += (
+                f"UID={self._odbc_value(self.settings.sql_user)};"
+                f"PWD={self._odbc_value(self.settings.sql_password)};"
+            )
         return connection
 
     def ping(self) -> bool:
