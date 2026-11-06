@@ -44,7 +44,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 
 - [ ] External SQL Server connection verified (blocked until connection details are provided)
 - [x] Docker daemon and ARM64/AMD64 image builds verified
-- [x] Python unit and service tests pass (46 passed, 2 SQL integration tests skipped without connection details)
+- [x] Python unit and service tests pass (47 passed, 2 SQL integration tests skipped without connection details)
 - [x] Demo-mode runtime smoke test passes
 - [x] Browser smoke test passes against the local demo server (6 tests, repeated twice)
 - [x] ARM64 and AMD64 application container health/Dash smoke tests

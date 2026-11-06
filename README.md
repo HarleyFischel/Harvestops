@@ -34,6 +34,8 @@ No SQL Server emulation is required or started on the Mac. The SQL Server Develo
 
 The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sqlserver-data. Its one-shot `migrations` service waits for SQL Server readiness and applies the versioned T-SQL before the app starts; rerun it with `docker compose -f compose.x86.yml run --rm migrations` when needed. Local TrustServerCertificate=true is only for the documented development container; production must use certificate verification.
 
+For the Mac external database, apply migrations explicitly after reviewing `.env`: `docker compose -f compose.mac.yml run --rm app python db/run_migrations.py`.
+
 Stop and restart Compose services with `docker compose -f compose.x86.yml stop` and `docker compose -f compose.x86.yml start` (or use the equivalent `compose.mac.yml` command). Use `docker compose ... down` to remove the containers while retaining named volumes. `docker compose -f compose.x86.yml down -v` deletes the `sqlserver-data` volume and destroys the local SQL Server database unless it has been backed up.
 
 ## What is implemented
