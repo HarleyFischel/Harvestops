@@ -2,7 +2,7 @@
 
 | Role evidence | Implementation evidence |
 | --- | --- |
-| Python/Dash/Flask | `harvestops/web.py`, `tests/test_web.py`, browser smoke |
+| Python/Dash/Flask/UI composition | `harvestops/web.py`, `harvestops/ui/`, `tests/test_web.py`, `tests/test_ui.py`, browser smoke |
 | SQL Server/T-SQL | `db/migrations/`, `harvestops/repository.py`, SQL integration job |
 | Secure workflows | `harvestops/services.py`, `harvestops/sql_store.py`, negative tests |
 | Data ingestion | `import_shipments`, sample CSV, import tests, ADF template |

@@ -18,6 +18,7 @@ from .knowledge import KnowledgeService
 from .logging_config import configure_logging
 from .services import DomainError, InMemoryStore
 from .sql_store import SqlServerStore
+from .ui import empty_state, metric_card, page_heading, section_heading
 
 configure_logging()
 log = logging.getLogger("harvestops")
@@ -94,10 +95,6 @@ def build_layout(store: InMemoryStore, settings: Settings):
     ], className="app-shell")
 
 
-def metric_card(label, value, suffix="", note=""):
-    return html.Div([html.Div(label, className="metric-label"), html.Div([html.Span(value, className="metric-value"), html.Span(suffix, className="metric-suffix")]), html.Div(note, className="metric-note")], className="metric-card")
-
-
 def csv_safe(value) -> str:
     text = str(value)
     return "'" + text if text.startswith(("=", "+", "-", "@")) else text
@@ -106,11 +103,11 @@ def csv_safe(value) -> str:
 def dashboard_view(store: InMemoryStore):
     options = store.filter_options()
     return html.Div([
-        html.Div([html.Div([html.Div("Operations dashboard", className="page-kicker"), html.H1("Move today’s harvest with confidence."), html.P("A single operational view of volume, service, fill, and labor signals.")]), html.Div("Last refreshed · synthetic seed", className="refresh-note")], className="page-heading"),
+        page_heading("Operations dashboard", "Move today’s harvest with confidence.", "A single operational view of volume, service, fill, and labor signals.", "Last refreshed · synthetic seed"),
         html.Div([html.Div([html.Label("Planned departure range"), dcc.DatePickerRange(id="filter-dates", start_date="2026-01-01", end_date="2026-03-31", display_format="YYYY-MM-DD", minimum_nights=0)], className="filter-control date-filter"), html.Div([html.Label("Customer"), dcc.Dropdown(id="filter-customer", options=[{"label": "All customers", "value": "All"}] + [{"label": x, "value": x} for x in options["customer"]], value="All")], className="filter-control"), html.Div([html.Label("Product"), dcc.Dropdown(id="filter-product", options=[{"label": "All products", "value": "All"}] + [{"label": x, "value": x} for x in options["product"]], value="All")], className="filter-control"), html.Div([html.Label("Facility"), dcc.Dropdown(id="filter-facility", options=[{"label": "All facilities", "value": "All"}] + [{"label": x, "value": x} for x in options["facility"]], value="All")], className="filter-control")], className="filter-row"),
         html.Div(id="kpi-row", className="metric-grid"),
         html.Div([dcc.Graph(id="volume-chart", config={"displayModeBar": False}), dcc.Graph(id="service-chart", config={"displayModeBar": False})], className="chart-grid"),
-        html.Div([html.Div([html.Div("Shipment exceptions", className="section-title"), html.Div("Late departures or partial fills require an operator decision.", className="section-subtitle")], className="section-heading"), html.Div(id="exceptions-table")], className="panel"),
+        html.Div([section_heading("Shipment exceptions", "Late departures or partial fills require an operator decision."), html.Div(id="exceptions-table")], className="panel"),
     ])
 
 
@@ -130,18 +127,18 @@ def shipments_view(store: InMemoryStore):
 
 def purchase_cards(store, user):
     cards = [html.Div([html.Div(r.request_id, className="purchase-id"), html.Div(f"{r.facility} · {r.requester}"), html.Div(f"${r.total:,.2f} · {r.status}", className="purchase-status")], className="purchase-card") for r in store.list_purchases(user)]
-    return cards or [html.Div("No purchase requests are visible for this account.", className="empty-state")]
+    return cards or [empty_state("No purchase requests are visible for this account.")]
 
 
 def purchase_history_view(store, user):
     events = [html.Div(f"{event.occurred_utc.isoformat()} · {event.actor} · {event.action} · {event.entity_id}", className="section-subtitle") for event in store.purchase_history(user)]
-    return events or [html.Div("No approval history is available.", className="empty-state")]
+    return events or [empty_state("No approval history is available.")]
 
 
 def purchasing_view(store):
     user = current_user(store)
     return html.Div([
-        html.Div([html.Div([html.Div("Controls & approvals", className="page-kicker"), html.H1("Purchasing approvals"), html.P("Create requests, submit for review, and preserve the decision trail.")])], className="page-heading"),
+        page_heading("Controls & approvals", "Purchasing approvals", "Create requests, submit for review, and preserve the decision trail."),
         html.Div([html.Div([html.Label("Facility"), dcc.Input(id="purchase-facility", value="Salinas")], className="filter-control"), html.Div([html.Label("Product"), dcc.Input(id="purchase-product", value="Romaine Hearts")], className="filter-control"), html.Div([html.Label("Quantity"), dcc.Input(id="purchase-qty", type="number", value=100)], className="filter-control"), html.Div([html.Label("Unit cost"), dcc.Input(id="purchase-cost", type="number", value=2.5)], className="filter-control"), html.Button("Create request", id="create-purchase", className="button primary")], className="inline-form"),
         html.Div(id="purchase-alert", className="alert"), html.Div("Request queue", className="section-title"), html.Div(id="purchase-list", children=purchase_cards(store, user), className="purchase-list"), html.Div("Approval history", className="section-title"), html.Div(id="purchase-history", children=purchase_history_view(store, user), className="purchase-history"),
         html.Div([html.Label("Request ID"), dcc.Input(id="submit-request-id", placeholder="PR-1001"), html.Label("Expected version"), dcc.Input(id="submit-version", type="number", value=1), html.Button("Submit for approval", id="submit-purchase", className="button secondary")], className="inline-form"),
@@ -151,7 +148,7 @@ def purchasing_view(store):
 
 def knowledge_view():
     return html.Div([
-        html.Div([html.Div([html.Div("Operating memory", className="page-kicker"), html.H1("Knowledge assistant"), html.P("Local search is always available. Generated answers require an explicitly configured provider.")])], className="page-heading"),
+        page_heading("Operating memory", "Knowledge assistant", "Local search is always available. Generated answers require an explicitly configured provider."),
         html.Div([dcc.Input(id="knowledge-query", placeholder="Try: What is the fill-rate definition?", className="search-input"), dcc.Dropdown(id="knowledge-mode", options=[{"label": "Local search", "value": "search"}, {"label": "Optional Claude answer", "value": "claude"}], value="search", clearable=False), html.Button("Search", id="knowledge-submit", className="button primary")], className="knowledge-form"), html.Div(id="knowledge-result", className="knowledge-result"),
     ])
 
