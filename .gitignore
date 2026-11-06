@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+.env.mac-sql
 .venv/
 .venv312/
 *.egg-info/

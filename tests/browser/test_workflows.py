@@ -91,7 +91,7 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.get_by_role("button", name="Create request").click()
         alert = page.locator("#purchase-alert")
         alert.get_by_text(re.compile("Created PR-")).wait_for()
-        request_id = re.search(r"PR-\d+", alert.inner_text()).group(0)
+        request_id = re.search(r"PR-[A-Z0-9]+", alert.inner_text()).group(0)
         page.locator("#submit-request-id").fill(request_id)
         page.locator("#submit-version").fill("1")
         page.get_by_role("button", name="Submit for approval").click()

@@ -28,11 +28,20 @@ The M2 Mac application image is ARM64 and uses an external database:
     # Set STORAGE_MODE=sqlserver, SQL_AUTH_MODE=sql_login, and SQL_SERVER to the x86-64 Linux/Proxmox host.
     docker compose -f compose.mac.yml up --build
 
-No SQL Server emulation is required or started on the Mac. The SQL Server Developer container is only in the x86-64 stack:
+The normal Mac profile does not require or start SQL Server emulation. The SQL Server Developer container is also available in the complete x86-64 stack:
 
     MSSQL_SA_PASSWORD='Use-a-long-local-only-password!' docker compose -f compose.x86.yml up --build
 
 The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sqlserver-data. Its one-shot `database-init` service creates the configured database on a fresh volume, then the one-shot `migrations` service applies versioned T-SQL before the app starts; rerun migrations with `docker compose -f compose.x86.yml run --rm migrations` when needed. Local `SQL_ENCRYPT=false` and `TrustServerCertificate=true` are only for this documented development container; production must use encryption and certificate verification.
+
+For a temporary M2-only SQL Server experiment, use the isolated emulated profile. It keeps SQL Server on an internal Docker network, publishes the ARM64 app on loopback port 8051, stores SQL data in the named `harvestops-mac-sql-data` volume, and creates a dedicated `harvestops_app` login before migrations:
+
+    ./scripts/init-mac-sql-env.sh
+    ./scripts/start-mac-sql-emulated.sh
+
+Open http://127.0.0.1:8051. SQL Server Developer runs as `linux/amd64` under Docker Desktop emulation and is for nonproduction development only; Microsoft does not support this architecture combination. The bounded startup helper waits up to 45 minutes and prints service diagnostics on failure. Stop without deleting data with `docker compose --env-file .env.mac-sql -f compose.mac-sql-emulated.yml down`; `down -v` deletes the temporary SQL volume and database, so back up first. The external-database Mac profile and x86-64 profile remain separate. Run `./scripts/backup-restore-mac-sql.sh` for a copy-only backup and disposable restore smoke test; the backup is written under ignored `./backups`.
+
+After verifying the temporary SQL profile, the local endpoint can be switched to the SQL-backed instance by stopping the demo process on port 8050, changing the ignored `HARVESTOPS_MAC_SQL_APP_PORT` in `.env.mac-sql` from `8051` to `8050`, and running `./scripts/start-mac-sql-emulated.sh`. This preserves any existing Cloudflare Tunnel configuration that already targets localhost:8050, but the public hostname must be checked separately. To return to the demo, stop the Mac SQL Compose profile, restore the ignored port value to `8051`, and run `./scripts/start-demo.sh`.
 
 For the Mac external database, apply migrations explicitly after reviewing `.env`: `docker compose -f compose.mac.yml run --rm app python db/run_migrations.py`.
 

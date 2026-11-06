@@ -1,0 +1,125 @@
+name: ${COMPOSE_PROJECT_NAME:-harvestops-mac-sql}
+
+# Temporary Apple Silicon development profile. SQL Server is AMD64 under emulation;
+# the app and bootstrap/migration clients remain ARM64. No SQL port is published.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?run scripts/init-mac-sql-env.sh first}
+    volumes:
+      - harvestops-mac-sql-data:/var/opt/mssql
+    networks: [harvestops-mac-sql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    restart: unless-stopped
+    mem_limit: 2560m
+    cpus: 2.0
+
+  database-bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/arm64]
+    platform: linux/arm64
+    env_file: .env.mac-sql
+    environment:
+      APP_ENV: development
+      DEMO_MODE: "true"
+      IDENTITY_MODE: demo
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: ${SQL_DATABASE:-HarvestOps}
+      SQL_USER: sa
+      SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?run scripts/init-mac-sql-env.sh first}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+    command: ["python", "db/bootstrap_development.py"]
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks: [harvestops-mac-sql]
+    restart: "no"
+    healthcheck:
+      disable: true
+    mem_limit: 512m
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/arm64]
+    platform: linux/arm64
+    env_file: .env.mac-sql
+    environment:
+      APP_ENV: development
+      DEMO_MODE: "true"
+      IDENTITY_MODE: demo
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: ${SQL_DATABASE:-HarvestOps}
+      SQL_USER: sa
+      SQL_PASSWORD: ${MSSQL_SA_PASSWORD:?run scripts/init-mac-sql-env.sh first}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+    command: ["python", "db/run_migrations.py"]
+    depends_on:
+      database-bootstrap:
+        condition: service_completed_successfully
+    networks: [harvestops-mac-sql]
+    restart: "no"
+    healthcheck:
+      disable: true
+    mem_limit: 512m
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms: [linux/arm64]
+    platform: linux/arm64
+    env_file: .env.mac-sql
+    environment:
+      APP_ENV: development
+      DEMO_MODE: "true"
+      IDENTITY_MODE: demo
+      STORAGE_MODE: sqlserver
+      SQL_SERVER: sqlserver,1433
+      SQL_DATABASE: ${SQL_DATABASE:-HarvestOps}
+      SQL_USER: ${HARVESTOPS_APP_LOGIN:?run scripts/init-mac-sql-env.sh first}
+      SQL_PASSWORD: ${HARVESTOPS_APP_PASSWORD:?run scripts/init-mac-sql-env.sh first}
+      SQL_AUTH_MODE: sql_login
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    networks: [harvestops-mac-sql]
+    ports:
+      - "127.0.0.1:${HARVESTOPS_MAC_SQL_APP_PORT:-8051}:8050"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8050/readyz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
+
+networks:
+  harvestops-mac-sql:
+    name: harvestops-mac-sql
+
+volumes:
+  harvestops-mac-sql-data:
+    name: harvestops-mac-sql-data

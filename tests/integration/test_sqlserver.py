@@ -33,6 +33,7 @@ def test_seeded_sql_server_exercises_tsql():
         sql_database = ""
         sql_user = ""
         sql_password = ""
+        sql_auth_mode = "sql_login"
         sql_encrypt = False
         sql_trust_server_certificate = True
         sql_connection_timeout = 5
@@ -60,6 +61,7 @@ def test_sql_migrations_expose_staging_and_workflow_procedures():
         sql_database = ""
         sql_user = ""
         sql_password = ""
+        sql_auth_mode = "sql_login"
         sql_encrypt = False
         sql_trust_server_certificate = True
         sql_connection_timeout = 5
