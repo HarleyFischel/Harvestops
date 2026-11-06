@@ -49,7 +49,7 @@ def test_sql_migrations_expose_staging_and_workflow_procedures():
     repository = SqlServerRepository(Settings())
     repository.connection_string = lambda: CONNECTION
     migration = repository.query("SELECT MAX(version) AS version FROM dbo.schema_migrations")[0]
-    assert int(migration["version"]) >= 7
+    assert int(migration["version"]) >= 8
     staging = repository.query("SELECT OBJECT_ID('staging.shipment_updates', 'U') AS object_id")[0]
     workflow = repository.query(
         "SELECT OBJECT_ID('dbo.usp_change_shipment_status', 'P') AS object_id"
@@ -57,6 +57,8 @@ def test_sql_migrations_expose_staging_and_workflow_procedures():
     importer = repository.query(
         "SELECT OBJECT_ID('dbo.usp_apply_shipment_import', 'P') AS object_id"
     )[0]
+    labor = repository.query("SELECT OBJECT_ID('dbo.labor_records', 'U') AS object_id")[0]
     assert staging["object_id"] is not None
     assert workflow["object_id"] is not None
     assert importer["object_id"] is not None
+    assert labor["object_id"] is not None

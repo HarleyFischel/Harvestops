@@ -177,10 +177,11 @@ class SqlServerRepository:
             params.extend(customer_params)
         rows = self.query(
             f"""SELECT COALESCE(SUM(pr.output_qty), 0) AS production_output,
-                       COALESCE(SUM(pr.labor_hours), 0) AS labor_hours
+                       COALESCE(SUM(lr.labor_hours), 0) AS labor_hours
                 FROM dbo.production_runs pr
                 JOIN dbo.facilities f ON f.facility_id = pr.facility_id
                 JOIN dbo.products p ON p.product_id = pr.product_id
+                LEFT JOIN dbo.labor_records lr ON lr.production_run_id = pr.production_run_id
                 WHERE {' AND '.join(clauses)}""",
             params,
         )

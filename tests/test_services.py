@@ -22,6 +22,13 @@ def test_dashboard_date_scope_applies_to_shipments_and_production_metrics():
     assert kpis["labor_productivity"] > 0
 
 
+def test_seeded_labor_records_align_with_production_runs():
+    store = InMemoryStore()
+    assert len(store.labor_records) == len(store.production_runs)
+    assert {record["labor_group"] for record in store.labor_records} == {"Packing crew"}
+    assert all(record["labor_hours"] > 0 for record in store.labor_records)
+
+
 def test_dashboard_chart_and_exception_scopes_match_filtered_kpis():
     store = InMemoryStore()
     filters = {"customer": "Harvest Grocers"}

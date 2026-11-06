@@ -34,6 +34,7 @@ class InMemoryStore:
         }
         self.shipments = self._seed_shipments()
         self.production_runs = self._seed_production_runs()
+        self.labor_records = self._seed_labor_records(self.production_runs)
         self.audit: list[AuditEvent] = []
         self.import_runs: list[dict] = []
         self.purchases: dict[str, PurchaseRequest] = {}
@@ -203,6 +204,19 @@ class InMemoryStore:
             for month in months
         ]
 
+    @staticmethod
+    def _seed_labor_records(production_runs: list[dict]) -> list[dict]:
+        return [
+            {
+                "facility": run["facility"],
+                "product": run["product"],
+                "work_date": run["run_date"],
+                "labor_group": "Packing crew",
+                "labor_hours": run["labor_hours"],
+            }
+            for run in production_runs
+        ]
+
     def _seed_purchases(self) -> None:
         seeded_at = datetime(2026, 3, 3, 15, tzinfo=timezone.utc)
         rejected = PurchaseRequest(
@@ -355,7 +369,16 @@ class InMemoryStore:
             and (not end_date or run["run_date"].date() <= end_date)
         ]
         production_output = sum((run["output_qty"] for run in production), Decimal(0))
-        labor_hours = sum((run["labor_hours"] for run in production), Decimal(0))
+        labor_hours = sum(
+            (
+                record["labor_hours"]
+                for record in self.labor_records
+                if (record["facility"], record["product"]) in keys
+                and (not start_date or record["work_date"].date() >= start_date)
+                and (not end_date or record["work_date"].date() <= end_date)
+            ),
+            Decimal(0),
+        )
         return {
             "shipment_volume": len(rows),
             "on_time_rate": (on_time / len(closed) * 100) if closed else 0,
