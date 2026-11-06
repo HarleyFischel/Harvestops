@@ -16,4 +16,5 @@ node_modules/
 legacy/dist/
 *.log
 data/*.bak
+backups/
 secrets/

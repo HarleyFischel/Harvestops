@@ -71,6 +71,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 - Azure deployment, ACR, Container Apps, OIDC, Entra, Claude provider calls, and remote MCP are configuration-only until credentials and authorization are supplied. The local Claude adapter and MCP tool code are implemented and unit/runtime import checked; remote calls were not claimed.
 - SQL Server-backed integration tests and real T-SQL benchmark timing/logical reads are pending external SQL Server access. The new migration 005 validation procedure is implemented but not executed against SQL Server.
 - The benchmark CLI now checks for `SQLSERVER_MIGRATION_CONNECTION` before importing `pyodbc`; on this Mac it exits with the documented prerequisite message instead of a unixODBC loader error. No benchmark timing or logical-read result is claimed without SQL Server.
+- The x86-only `scripts/backup-restore-x86.sh` is implemented and passes `bash -n`; it performs a timestamped `BACKUP DATABASE`, host copy, logical-file-list restore to `HarvestOps_restore`, and read-only smoke queries. It was not executed on this M2 because SQL Server emulation is intentionally excluded; the restore result remains pending the intended x86-64 host.
 
 ## Commands for remaining gates
 

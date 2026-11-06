@@ -36,6 +36,8 @@ The x86 stack is for an x86-64 Linux host/VM and persists SQL Server data in sql
 
 For the Mac external database, apply migrations explicitly after reviewing `.env`: `docker compose -f compose.mac.yml run --rm app python db/run_migrations.py`.
 
+On the x86-64 development host, run `MSSQL_SA_PASSWORD='...' ./scripts/backup-restore-x86.sh` for a repeatable backup/restore exercise. It copies a timestamped backup into `./backups`, replaces only the disposable `HarvestOps_restore` database, and runs read-only shipment/migration smoke queries. Review and protect the copied backup; do not use this script as a production backup policy.
+
 Stop and restart Compose services with `docker compose -f compose.x86.yml stop` and `docker compose -f compose.x86.yml start` (or use the equivalent `compose.mac.yml` command). Use `docker compose ... down` to remove the containers while retaining named volumes. `docker compose -f compose.x86.yml down -v` deletes the `sqlserver-data` volume and destroys the local SQL Server database unless it has been backed up.
 
 ## What is implemented
