@@ -10,7 +10,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install -e '.[dev]'
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: pip install --no-deps -e .
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest
@@ -111,7 +112,8 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev
           echo "/opt/mssql-tools18/bin" >> "$GITHUB_PATH"
-      - run: pip install -e '.[dev]'
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: pip install --no-deps -e .
       - name: Create integration database
         run: sqlcmd -C -S localhost -U sa -P '${{ secrets.SQLSERVER_TEST_PASSWORD }}' -Q "IF DB_ID(N'HarvestOps') IS NULL CREATE DATABASE HarvestOps"
       - name: Apply T-SQL migrations
