@@ -18,7 +18,7 @@ Open http://127.0.0.1:8050. Demo accounts are demo.viewer, demo.operator, demo.a
 
 ## Codespaces
 
-Open the repository in GitHub Codespaces. The devcontainer installs dependencies, enables Docker through the Docker-in-Docker feature, forwards private port 8050, and runs the demo. Verify Docker with `docker version`; use `./scripts/test.sh` for tests. Stop/restart the process with Ctrl-C and `./scripts/start-demo.sh`; rebuild the container from the Codespaces command palette. Deleting the Codespace removes its local filesystem; deleting the Docker volume in a database environment destroys the SQL Server data unless restored from backup.
+Open the repository in GitHub Codespaces. The devcontainer installs dependencies, enables Docker through the Docker-in-Docker feature, forwards private port 8050, and runs the demo. Verify Docker with `docker version`; use `./scripts/verify-codespaces.sh` for a one-command local verification (set `RUN_BROWSER=true` after installing Playwright Chromium). Use `./scripts/test.sh` for tests. Stop/restart the process with Ctrl-C and `./scripts/start-demo.sh`; rebuild the container from the Codespaces command palette. Deleting the Codespace removes its local filesystem; deleting the Docker volume in a database environment destroys the SQL Server data unless restored from backup.
 
 ## Containers and database modes
 

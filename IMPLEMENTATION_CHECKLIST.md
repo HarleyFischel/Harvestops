@@ -35,6 +35,7 @@ This checklist is the source of truth for the build. `[x]` means implemented and
 - [x] ARM64 development image and AMD64 deployment image definitions and separate builds
 - [x] Mac + external database Compose and full x86-64 development Compose
 - [x] Codespaces devcontainer and one-command startup/test scripts
+- [x] Codespaces one-command local verification wrapper that reuses or safely starts the demo
 - [x] GitHub Actions checks, image tagging, OIDC/Azure deployment templates
 - [x] Manual Azure Container Apps migration job configuration with explicit start/inspection commands
 - [x] Read-only MCP example and isolated legacy React sample
