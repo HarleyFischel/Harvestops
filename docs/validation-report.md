@@ -6,6 +6,7 @@ Date: 2026-11-05. Host: Apple Silicon M2, 8 GiB RAM, macOS, Python 3.12 virtual 
 
 - Repository connected to https://github.com/HarleyFischel/Harvestops.git; initial commit was 85be7ca.
 - pip install -e '.[dev]' completed in .venv312 using Python 3.12.
+- `scripts/init-env.sh` was syntax-checked and exercised in a temporary directory; it generated a mode-600 `.env` secret and refused to overwrite an existing file.
 - `.venv312/bin/python -m pytest -q` passed: 36 tests, with 2 SQL integration tests skipped because no connection string was supplied.
 - `PYTHON_BIN=.venv312/bin/python ./scripts/verify-local.sh` passed with the same 36 passed / 2 skipped result and a redacted configuration summary.
 - ruff check . passed.

@@ -6,7 +6,7 @@ HarvestOps is a synthetic produce-operations portfolio application built with Py
 
 Supported Python: 3.11–3.13. Python 3.12 is recommended.
 
-    cp .env.example .env
+    ./scripts/init-env.sh
     python3.12 -m venv .venv
     . .venv/bin/activate
     pip install -e '.[dev]'
@@ -24,7 +24,7 @@ Open the repository in GitHub Codespaces. The devcontainer installs dependencies
 
 The M2 Mac application image is ARM64 and uses an external database:
 
-    cp .env.example .env
+    ./scripts/init-env.sh
     # Set STORAGE_MODE=sqlserver and SQL_SERVER to the x86-64 Linux/Proxmox host.
     docker compose -f compose.mac.yml up --build
 
