@@ -1,11 +1,29 @@
 import os
+import uuid
 
 import pytest
 
+from harvestops.config import Settings
 from harvestops.repository import SqlServerRepository
+from harvestops.sql_store import SqlServerStore
 
 CONNECTION = os.getenv("SQLSERVER_INTEGRATION_CONNECTION")
 pytestmark = pytest.mark.integration
+
+
+def _sql_store():
+    settings = Settings(
+        storage_mode="sqlserver",
+        sql_server="",
+        sql_database="",
+        sql_user="",
+        sql_password="",
+        sql_encrypt=False,
+        sql_trust_server_certificate=True,
+    )
+    store = SqlServerStore(settings)
+    store.repository.connection_string = lambda: CONNECTION
+    return store
 
 
 @pytest.mark.skipif(not CONNECTION, reason="SQLSERVER_INTEGRATION_CONNECTION is not configured")
@@ -62,3 +80,58 @@ def test_sql_migrations_expose_staging_and_workflow_procedures():
     assert workflow["object_id"] is not None
     assert importer["object_id"] is not None
     assert labor["object_id"] is not None
+
+
+@pytest.mark.skipif(not CONNECTION, reason="SQLSERVER_INTEGRATION_CONNECTION is not configured")
+def test_sql_import_status_change_and_audit_are_end_to_end():
+    store = _sql_store()
+    actor = store.users["demo.operator"]
+    shipment_id = f"SHP-T{uuid.uuid4().hex[:10].upper()}"
+    first = second = None
+    csv_text = (
+        "shipment_id,customer,product,facility,carrier,dock,planned_departure_utc,"
+        "ordered_qty,shipped_qty,freight_cost,status\n"
+        f"{shipment_id},City Market,Spring Mix,Salinas,GreenLine,D-07,"
+        "2026-03-15T15:00:00Z,500,500,875,Scheduled\n"
+    )
+    first = store.import_shipments(csv_text, actor)
+    second = store.import_shipments(csv_text, actor)
+    try:
+        assert first["applied"] == 1
+        assert second["applied"] == 0
+        shipment = store.get_shipment(shipment_id)
+        assert shipment is not None
+        updated = store.change_status(shipment_id, "In Transit", actor, shipment.version)
+        assert updated.status == "In Transit"
+        audit_rows = store.repository.query(
+            "SELECT action_name FROM dbo.audit_events "
+            "WHERE entity_id IN (?, ?) ORDER BY audit_event_id",
+            (shipment_id, first["run_id"]),
+        )
+        assert {row["action_name"] for row in audit_rows} >= {
+            "shipment.import",
+            "shipment.status_changed",
+        }
+    finally:
+        if first and second:
+            first_run_id = int(first["run_id"].split("-")[1])
+            second_run_id = int(second["run_id"].split("-")[1])
+            with store.repository.connect() as conn:
+                conn.execute(
+                    "DELETE FROM dbo.audit_events WHERE entity_id IN (?, ?, ?)",
+                    shipment_id,
+                    first["run_id"],
+                    second["run_id"],
+                )
+                conn.execute(
+                    "DELETE FROM dbo.import_errors WHERE import_run_id IN (?, ?)",
+                    first_run_id,
+                    second_run_id,
+                )
+                conn.execute("DELETE FROM dbo.shipments WHERE shipment_id = ?", shipment_id)
+                conn.execute(
+                    "DELETE FROM dbo.import_runs WHERE import_run_id IN (?, ?)",
+                    first_run_id,
+                    second_run_id,
+                )
+                conn.commit()
