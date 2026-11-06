@@ -36,9 +36,9 @@ jobs:
       - name: Install dependency audit tool
         run: python -m pip install pip-audit==2.9.0
       - name: Audit third-party Python dependencies
-        # The local editable HarvestOps project is not published to PyPI; audit its
-        # locked third-party dependencies without weakening vulnerability checks.
-        run: pip-audit --strict --skip-editable
+        # Audit the committed third-party lock directly; HarvestOps itself is not
+        # published to PyPI, so it is intentionally not an audit target.
+        run: pip-audit --strict -r requirements-dev.lock
   legacy:
     runs-on: ubuntu-latest
     steps:
