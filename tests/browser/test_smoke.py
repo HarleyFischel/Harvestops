@@ -155,3 +155,18 @@ def test_shared_page_heading_stays_horizontal_without_freshness_note():
         )
         page.close()
         browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_dash_select_search_input_keeps_native_control_chrome_hidden():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 834, "height": 1024})
+        page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
+        style = page.locator(".Select-input input").first.evaluate(
+            "element => ({border: getComputedStyle(element).border, width: parseFloat(getComputedStyle(element).width)})"
+        )
+        assert style["border"].startswith("0px")
+        assert style["width"] < 20
+        page.close()
+        browser.close()
