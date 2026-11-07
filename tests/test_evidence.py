@@ -127,7 +127,9 @@ def test_github_adapter_maps_running_status_and_is_repository_scoped(monkeypatch
         def json(self):
             return self.value
 
-    adapter = GitHubEvidenceAdapter("server-token", "HarleyFischel/Harvestops", "https://api.test")
+    adapter = GitHubEvidenceAdapter(
+        "fixture-credential", "HarleyFischel/Harvestops", "https://api.test"
+    )
     monkeypatch.setattr(
         adapter.session,
         "get",
@@ -173,7 +175,9 @@ def test_live_timeout_keeps_last_snapshot_and_marks_it_stale(tmp_path, monkeypat
 
 
 def test_github_rate_limit_is_explicit(monkeypatch):
-    adapter = GitHubEvidenceAdapter("server-token", "HarleyFischel/Harvestops", "https://api.test")
+    adapter = GitHubEvidenceAdapter(
+        "fixture-credential", "HarleyFischel/Harvestops", "https://api.test"
+    )
 
     class Response:
         status_code = 429

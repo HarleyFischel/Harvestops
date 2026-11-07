@@ -1,0 +1,7 @@
+title = "HarvestOps secret scanning"
+
+[[allowlists]]
+description = "Synthetic GitHub adapter fixture from the evidence tests"
+paths = ['^tests/test_evidence\.py$']
+regexTarget = "match"
+regexes = ['server-token\\", \\"HarleyFischel/Harvestops']
