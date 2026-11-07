@@ -2,6 +2,8 @@
 
 HarvestOps includes a read-only Delivery & Quality page at `/?page=delivery`. It is a portfolio evidence view, not a project-management or deployment control plane. GitHub remains authoritative for commits, issues, pull requests, workflow runs, and artifacts.
 
+The current checkpoint records hosted run `42374845738` for source commit `176a32f1c40f90278749cb91be4cb97b0c622fa3`; all required jobs completed successfully. The running local SQL-backed app is built with that source revision. No formal release/deployment record is inferred from the commit or CI run.
+
 ## Evidence modes
 
 The default mode reads `evidence/snapshot.json`, a versioned and schema-validated sanitized snapshot. It works without credentials and labels its collection time, source commit, scope, and stale/error state. The page never treats the newest GitHub commit as the deployed revision: runtime identity comes from `HARVESTOPS_*` build metadata, while CI evidence is matched by commit when possible.

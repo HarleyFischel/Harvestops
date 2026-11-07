@@ -87,9 +87,9 @@ def main() -> int:
         except (OSError, json.JSONDecodeError):
             preserved = {}
 
-    ci_runs = preserved.get("ci_runs", [])
+    ci_runs = list(preserved.get("ci_runs", []))
     if args.ci_run_id and args.ci_run_url:
-        ci_runs.append(
+        ci_runs = [
             {
                 "id": args.ci_run_id,
                 "label": "GitHub Actions CI",
@@ -99,8 +99,9 @@ def main() -> int:
                 "url": args.ci_run_url,
                 "scope": "hosted-main",
                 "collected_at_utc": collected,
-            }
-        )
+            },
+            *[run for run in ci_runs if run.get("id") != args.ci_run_id],
+        ]
     snapshot = {
         "schema_version": 1,
         "snapshot_type": "sanitized-portfolio",

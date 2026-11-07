@@ -2,8 +2,8 @@
   "schema_version": 1,
   "snapshot_type": "sanitized-portfolio",
   "repository": "HarleyFischel/Harvestops",
-  "source_commit": "working-tree",
-  "collected_at_utc": "2026-11-07T12:47:20Z",
+  "source_commit": "176a32f1c40f90278749cb91be4cb97b0c622fa3",
+  "collected_at_utc": "2026-11-07T13:07:35Z",
   "scope": "Explicitly recorded local structured results and optional hosted CI metadata.",
   "sources": [
     {
@@ -23,6 +23,16 @@
     }
   ],
   "ci_runs": [
+    {
+      "id": "42374845738",
+      "label": "GitHub Actions CI",
+      "status": "passed",
+      "conclusion": "success",
+      "commit": "176a32f1c40f90278749cb91be4cb97b0c622fa3",
+      "url": "https://github.com/HarleyFischel/Harvestops/actions/runs/42374845738",
+      "scope": "hosted-main",
+      "collected_at_utc": "2026-11-07T13:07:35Z"
+    },
     {
       "id": "42336164890",
       "label": "CI",
@@ -48,27 +58,27 @@
       "label": "Local Python suite",
       "status": "passed",
       "summary": "81 tests, 0 failures, 4 skipped",
-      "commit": "working-tree",
+      "commit": "176a32f1c40f90278749cb91be4cb97b0c622fa3",
       "scope": "local structured artifact",
-      "collected_at_utc": "2026-11-07T12:47:20Z"
+      "collected_at_utc": "2026-11-07T13:07:35Z"
     },
     {
       "id": "browser-suite",
       "label": "Browser suite",
       "status": "passed",
       "summary": "20 tests, 0 failures, 0 skipped",
-      "commit": "working-tree",
+      "commit": "176a32f1c40f90278749cb91be4cb97b0c622fa3",
       "scope": "local structured artifact",
-      "collected_at_utc": "2026-11-07T12:47:20Z"
+      "collected_at_utc": "2026-11-07T13:07:35Z"
     },
     {
       "id": "sql-integration-suite",
       "label": "SQL integration suite",
       "status": "passed",
       "summary": "4 tests, 0 failures, 0 skipped",
-      "commit": "working-tree",
+      "commit": "176a32f1c40f90278749cb91be4cb97b0c622fa3",
       "scope": "local structured artifact",
-      "collected_at_utc": "2026-11-07T12:47:20Z"
+      "collected_at_utc": "2026-11-07T13:07:35Z"
     }
   ],
   "releases": [],
