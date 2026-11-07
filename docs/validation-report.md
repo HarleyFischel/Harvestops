@@ -2,9 +2,9 @@
 
 Date: 2026-11-07. Host: Apple Silicon M2, 8 GiB RAM, macOS. The verification environment is `.venv` with Python 3.13.14; the supported Python 3.12 environment remains available. Docker Desktop reports an ARM64 daemon, approximately 3.82 GiB available to its VM, and approximately 124 GiB free on `/System/Volumes/Data`.
 
-## Current authoritative status (focused review, before hosted CI)
+## Current authoritative status (focused review, final)
 
-- The working tree contains the focused review changes after `f8267fc`; commit and hosted CI are intentionally pending until the final checks below complete. The intended remote remains the private HarvestOps repository: `https://github.com/HarleyFischel/Harvestops.git`.
+- The focused review is complete on commit `952c324b4201b27b6a08b951fd04d05baf493930` on `main`. Hosted GitHub Actions run [42335523476](https://github.com/HarleyFischel/Harvestops/actions/runs/42335523476) completed successfully for that exact commit; all required jobs passed, including secret scanning, tests, SQL integration, legacy build/audit, container build, and image scan. The intended remote remains the private HarvestOps repository: `https://github.com/HarleyFischel/Harvestops.git`.
 - Exception links now resolve the requested shipment to its server-calculated page, select it, show details/actions, survive reload and back/forward, and fail safely for missing records. Public read-only browser checks passed for first-page and later-page deep links.
 - Demo UI controls now reflect viewer/operator/approver permissions while the existing server-side authorization remains authoritative. Date/time values render in `America/New_York` from UTC storage, with raw values retained for chronological sorting; the supported 1440, 1024, 834, 768, and narrow layouts have no document-level horizontal overflow.
 - Entra/MSAL uses the supported authorization-code flow without reserved `openid`/`profile` input scopes, with state/nonce/PKCE construction, `response_mode=query`, and `SameSite=Lax`. The browser regression now uses `localhost` and `127.0.0.1` as genuinely different local sites, simulates the identity-provider redirect, and verifies return to the application. Live Microsoft Entra sign-in remains account-dependent and unverified; demo authentication remains active.
@@ -14,7 +14,7 @@ Date: 2026-11-07. Host: Apple Silicon M2, 8 GiB RAM, macOS. The verification env
 - Final application images built separately and ran as non-root `appuser`: `harvestops:focused-final-arm64` (`sha256:a08cdc82c6bdb9b00a8c88ab3ce4b165636eb6d14ec01218126d4a00cc006145`) and `harvestops:focused-final-amd64` (`sha256:e6998e601e22272fe3c3b2c0f2e9f0f4d4e61af1324ed432915e0343bd682b2d`). Both returned demo health/readiness/root HTTP 200 in disposable containers; the ARM64 image also passed the two-test shipment/purchasing workflow browser check in a one-worker demo container.
 - The final local SQL-backed browser run passed `15` focused tests (navigation, permissions, formatting/layout, smoke, and Entra simulation); the separate disposable demo workflow run passed `2` tests. The final SQL integration module passed `4` tests. MCP stdio and offline infrastructure verification passed, including Compose rendering and Bicep compilation.
 - Final screenshots are [operations overview](screenshots/operations-overview.png), [selected shipment](screenshots/selected-shipment.png), and [selected purchasing request](screenshots/selected-purchase.png).
-- Remaining gates are hosted CI for this final commit, live Entra tenant sign-in, Azure/OIDC/Container Apps, remote Claude/MCP, external Proxmox SQL, and production certificate-chain validation. No cloud resources were provisioned and no paid AI credential is required for core operation.
+- Remaining account-dependent or environment-specific gates are live Entra tenant sign-in, Azure/OIDC/Container Apps, remote Claude/MCP, external Proxmox SQL, and production certificate-chain validation. No cloud resources were provisioned and no paid AI credential is required for core operation.
 
 ## M2 Mac SQL profile verification (2026-11-06)
 
