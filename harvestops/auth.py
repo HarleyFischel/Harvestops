@@ -20,12 +20,18 @@ class EntraAuth:
         )
 
     def begin(self, state: str) -> dict:
-        """Create MSAL's state/nonce/PKCE-bound authorization-code flow."""
+        """Create an auth-code flow that returns through a top-level GET.
+
+        The session cookie intentionally remains SameSite=Lax. Entra redirects
+        back with ``response_mode=query`` so the browser includes that cookie on
+        the cross-site top-level navigation, preserving the server-side MSAL
+        flow/state/PKCE material without weakening cookie policy.
+        """
         flow = self.client.initiate_auth_code_flow(
             scopes=[],
             state=state,
             redirect_uri=self.settings.entra_redirect_uri,
-            response_mode="form_post",
+            response_mode="query",
         )
         if "error" in flow:
             raise PermissionError("Entra authorization could not be started")

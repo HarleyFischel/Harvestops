@@ -54,7 +54,7 @@ def test_msal_auth_code_flow_constructs_state_nonce_and_pkce_without_reserved_in
     query = parse_qs(urlparse(flow["auth_uri"]).query)
 
     assert query["state"] == ["csrf-state"]
-    assert query["response_mode"] == ["form_post"]
+    assert query["response_mode"] == ["query"]
     assert query["code_challenge_method"] == ["S256"]
     assert query["code_challenge"]
     assert flow["code_verifier"]
@@ -105,12 +105,13 @@ def test_entra_login_callback_maps_roles_and_logout(monkeypatch):
     with client.session_transaction() as session:
         state = session["entra_flow"]["state"]
 
-    callback = client.post(
+    callback = client.get(
         "/auth/callback",
-        data={"state": state, "code": "valid-code"},
+        query_string={"state": state, "code": "valid-code"},
+        follow_redirects=False,
     )
-    assert callback.status_code == 200
-    assert callback.get_json()["roles"] == ["operator", "viewer"]
+    assert callback.status_code == 302
+    assert callback.headers["Location"] == "/"
     csrf = client.get("/api/csrf").get_json()["csrf_token"]
     signed_out = client.post("/auth/logout", headers={"X-CSRF-Token": csrf})
     assert signed_out.get_json()["status"] == "signed_out"

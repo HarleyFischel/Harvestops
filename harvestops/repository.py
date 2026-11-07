@@ -205,19 +205,24 @@ class SqlServerRepository:
     def dashboard_service(self, filters: dict) -> dict:
         where, params = self._shipment_filter(filters)
         rows = self.query(
-            f"""SELECT COUNT_BIG(*) AS shipment_count,
-                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL
-                                           AND status <> 'Cancelled'
-                                           AND actual_departure_utc <= planned_departure_utc
-                                        THEN 1 ELSE 0 END), 0) AS on_time
+            f"""SELECT
+                       COALESCE(SUM(CASE WHEN status = 'Scheduled' AND actual_departure_utc IS NULL THEN 1 ELSE 0 END), 0) AS open_scheduled,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND status <> 'Cancelled' AND actual_departure_utc <= planned_departure_utc THEN 1 ELSE 0 END), 0) AS departed_on_time,
+                       COALESCE(SUM(CASE WHEN actual_departure_utc IS NOT NULL AND status <> 'Cancelled' AND actual_departure_utc > planned_departure_utc THEN 1 ELSE 0 END), 0) AS departed_late,
+                       COALESCE(SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END), 0) AS cancelled
                 FROM dbo.v_shipment_board
                 WHERE {where}""",
             params,
         )
         row = rows[0]
+        on_time = int(row["departed_on_time"])
+        late = int(row["departed_late"])
         return {
-            "on_time": int(row["on_time"]),
-            "late_open": int(row["shipment_count"]) - int(row["on_time"]),
+            "open_scheduled": int(row["open_scheduled"]),
+            "departed_on_time": on_time,
+            "departed_late": late,
+            "cancelled": int(row["cancelled"]),
+            "on_time_denominator": on_time + late,
         }
 
     def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[dict]:

@@ -55,7 +55,9 @@ Stop and restart Compose services with `docker compose -f compose.x86.yml stop` 
 
 ## What is implemented
 
-- Operations dashboard: date-range/customer/product/facility filters, KPI cards, linked Plotly charts, and exception table.
+- Operations overview: date-range/customer/product/facility filters, six KPI cards with accessible definitions, explicit service categories, linked Plotly charts, and shipment exception links.
+- Shipment board: selected-record detail and audit history, server-side paging/filtering, valid transitions, stale-record recovery, and compact import history.
+- Purchasing approvals: status-filtered queue, selected request detail, draft submission, approval/rejection controls, concurrency recovery, and audit history.
 - Shipment board: service filtering/paging, allowed status transitions, optimistic version checks, role-protected CSV export, and audit events.
 - Purchasing: decimal totals, submit/approve/reject workflow, self-approval prevention, concurrency checks, and audit events.
 - Knowledge assistant: permission-safe local search with citations; optional provider boundary is documented.

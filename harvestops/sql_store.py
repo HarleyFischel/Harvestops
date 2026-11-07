@@ -161,6 +161,36 @@ class SqlServerStore:
     def dashboard_service(self, filters: dict) -> dict[str, int]:
         return self.repository.dashboard_service(filters)
 
+    def get_purchase(self, request_id: str, actor: User | None) -> PurchaseRequest | None:
+        if not actor:
+            return None
+        return next(
+            (request for request in self.list_purchases(actor) if request.request_id == request_id),
+            None,
+        )
+
+    def shipment_audit_history(self, shipment_id: str) -> list[AuditEvent]:
+        rows = self.repository.query(
+            """SELECT CONVERT(varchar(32), audit_event_id) AS event_id, actor,
+                      action_name, entity_type, entity_id, detail_json, occurred_utc
+               FROM dbo.audit_events
+               WHERE entity_type = 'shipment' AND entity_id = ?
+               ORDER BY occurred_utc DESC""",
+            (shipment_id,),
+        )
+        return [
+            AuditEvent(
+                row["event_id"],
+                row["actor"],
+                row["action_name"],
+                row["entity_type"],
+                row["entity_id"],
+                {"raw": row["detail_json"]},
+                row["occurred_utc"].replace(tzinfo=timezone.utc),
+            )
+            for row in rows
+        ]
+
     def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[Shipment]:
         return [self._shipment(row) for row in self.repository.shipment_exceptions(filters, limit)]
 

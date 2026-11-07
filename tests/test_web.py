@@ -339,15 +339,23 @@ def test_direct_dash_write_callback_without_csrf_does_not_mutate_state():
     client = app.server.test_client()
     assert client.post("/auth/demo", json={"username": "demo.operator"}).status_code == 200
     client.delete_cookie("harvestops_csrf")
+    callback_output = next(
+        key
+        for key in app.callback_map
+        if key.startswith("..shipment-alert.children...shipment-refresh.data")
+    )
 
     payload = {
-        "output": "shipment-alert.children",
-        "outputs": {"id": "shipment-alert", "property": "children"},
+        "output": callback_output,
+        "outputs": [
+            {"id": "shipment-alert", "property": "children"},
+            {"id": "shipment-refresh", "property": "data"},
+        ],
         "inputs": [{"id": "confirm-status", "property": "submit_n_clicks", "value": 1}],
         "state": [
-            {"id": "status-shipment-id", "property": "value", "value": "SHP-1004"},
-            {"id": "status-value", "property": "value", "value": "In Transit"},
-            {"id": "status-version", "property": "value", "value": 1},
+            {"id": "selected-shipment-id", "property": "data", "value": "SHP-1004"},
+            {"id": "selected-status", "property": "value", "value": "In Transit"},
+            {"id": "selected-shipment-version", "property": "data", "value": 1},
             {"id": "csrf-token", "property": "data", "value": ""},
             {"id": "csrf-status", "property": "data-csrf-token", "value": ""},
         ],
@@ -370,14 +378,22 @@ def test_direct_dash_write_callback_viewer_cannot_mutate_with_valid_csrf():
     client = app.server.test_client()
     client.post("/auth/demo", json={"username": "demo.viewer"})
     token = client.get("/api/csrf").get_json()["csrf_token"]
+    callback_output = next(
+        key
+        for key in app.callback_map
+        if key.startswith("..shipment-alert.children...shipment-refresh.data")
+    )
     payload = {
-        "output": "shipment-alert.children",
-        "outputs": {"id": "shipment-alert", "property": "children"},
+        "output": callback_output,
+        "outputs": [
+            {"id": "shipment-alert", "property": "children"},
+            {"id": "shipment-refresh", "property": "data"},
+        ],
         "inputs": [{"id": "confirm-status", "property": "submit_n_clicks", "value": 1}],
         "state": [
-            {"id": "status-shipment-id", "property": "value", "value": "SHP-1004"},
-            {"id": "status-value", "property": "value", "value": "In Transit"},
-            {"id": "status-version", "property": "value", "value": 1},
+            {"id": "selected-shipment-id", "property": "data", "value": "SHP-1004"},
+            {"id": "selected-status", "property": "value", "value": "In Transit"},
+            {"id": "selected-shipment-version", "property": "data", "value": 1},
             {"id": "csrf-token", "property": "data", "value": token},
             {"id": "csrf-status", "property": "data-csrf-token", "value": token},
         ],

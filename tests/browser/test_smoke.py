@@ -14,7 +14,7 @@ def test_dashboard_renders():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
-        assert page.get_by_text("Operations dashboard").count() >= 1
+        assert page.get_by_text("Operations overview").count() >= 1
         assert page.get_by_text("SYNTHETIC DATA").count() >= 1
         assert page.get_by_text("Planned departure range").count() == 1
         browser.close()
@@ -27,7 +27,7 @@ def test_mobile_dashboard_renders():
         page = browser.new_page(viewport={"width": 390, "height": 844})
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
         assert (
-            page.get_by_role("heading", name="Move today’s harvest with confidence.").count() == 1
+            page.get_by_role("heading", name="Run the day from one operational view.").count() == 1
         )
         assert page.get_by_text("SYNTHETIC DATA").count() >= 1
         browser.close()
@@ -40,7 +40,7 @@ def test_tablet_dashboard_renders_with_responsive_content():
         page = browser.new_page(viewport={"width": 768, "height": 1024})
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
         assert (
-            page.get_by_role("heading", name="Move today’s harvest with confidence.").count() == 1
+            page.get_by_role("heading", name="Run the day from one operational view.").count() == 1
         )
         content = page.locator(".content").bounding_box()
         metrics = page.locator(".metric-grid").bounding_box()
@@ -56,7 +56,11 @@ def test_keyboard_focus_indicator_is_visible():
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
         page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
-        button = page.get_by_role("button", name="Apply status")
+        page.locator("#shipment-grid .ag-center-cols-container .ag-row").filter(
+            has_text="SHP-1004"
+        ).click()
+        page.get_by_text("Selected shipment", exact=True).wait_for()
+        button = page.locator("#shipment-detail .button.primary")
         button.wait_for()
         button.focus()
         assert button.evaluate("element => getComputedStyle(element).outlineStyle") == "solid"

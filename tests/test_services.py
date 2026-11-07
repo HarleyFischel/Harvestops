@@ -38,7 +38,18 @@ def test_dashboard_chart_and_exception_scopes_match_filtered_kpis():
     exceptions = store.shipment_exceptions(filters)
 
     assert sum(row["shipped_qty"] for row in volume) == 2280
-    assert service["on_time"] + service["late_open"] == kpis["shipment_volume"]
+    assert service["open_scheduled"] == 0
+    assert service["departed_on_time"] == 1
+    assert service["departed_late"] == 1
+    assert service["cancelled"] == 1
+    assert service["on_time_denominator"] == 2
+    assert (
+        sum(
+            service[key]
+            for key in ["open_scheduled", "departed_on_time", "departed_late", "cancelled"]
+        )
+        == kpis["shipment_volume"]
+    )
     assert all(row.customer == "Harvest Grocers" for row in exceptions)
 
 

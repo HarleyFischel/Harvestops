@@ -17,7 +17,19 @@ def metric_card(label: str, value: str, suffix: str = "", note: str = ""):
     """Return a KPI card with an accessible text hierarchy."""
     return html.Div(
         [
-            html.Div(label, className="metric-label"),
+            html.Div(
+                [
+                    html.Span(label, className="metric-label"),
+                    html.Details(
+                        [
+                            html.Summary("?", **{"aria-label": f"Definition for {label}"}),
+                            html.Div(note, className="metric-definition"),
+                        ],
+                        className="metric-help",
+                    ),
+                ],
+                className="metric-label-row",
+            ),
             html.Div(
                 [
                     html.Span(value, className="metric-value"),

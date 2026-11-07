@@ -352,6 +352,21 @@ class InMemoryStore:
             if event.entity_type == "purchase_request" and event.entity_id in visible
         ]
 
+    def get_purchase(self, request_id: str, actor: User | None) -> PurchaseRequest | None:
+        if not actor:
+            return None
+        return next(
+            (request for request in self.list_purchases(actor) if request.request_id == request_id),
+            None,
+        )
+
+    def shipment_audit_history(self, shipment_id: str) -> list[AuditEvent]:
+        return [
+            event
+            for event in self.audit
+            if event.entity_type == "shipment" and event.entity_id == shipment_id
+        ]
+
     def kpis(self, filters: dict) -> dict:
         rows, _ = self.list_shipments(filters, 1, 10_000)
         total_ordered = sum((r.ordered_qty for r in rows), Decimal(0))
@@ -402,8 +417,29 @@ class InMemoryStore:
 
     def dashboard_service(self, filters: dict) -> dict[str, int]:
         rows, _ = self.list_shipments(filters, 1, 10_000)
-        on_time = sum(1 for row in rows if row.on_time)
-        return {"on_time": on_time, "late_open": len(rows) - on_time}
+        open_scheduled = sum(
+            1 for row in rows if row.status == "Scheduled" and row.actual_departure_utc is None
+        )
+        departed_on_time = sum(
+            1
+            for row in rows
+            if row.actual_departure_utc is not None and row.status != "Cancelled" and row.on_time
+        )
+        departed_late = sum(
+            1
+            for row in rows
+            if row.actual_departure_utc is not None
+            and row.status != "Cancelled"
+            and not row.on_time
+        )
+        cancelled = sum(1 for row in rows if row.status == "Cancelled")
+        return {
+            "open_scheduled": open_scheduled,
+            "departed_on_time": departed_on_time,
+            "departed_late": departed_late,
+            "cancelled": cancelled,
+            "on_time_denominator": departed_on_time + departed_late,
+        }
 
     def shipment_exceptions(self, filters: dict, limit: int = 50) -> list[Shipment]:
         rows, _ = self.list_shipments(filters, 1, 10_000)
