@@ -10,7 +10,10 @@ def page_heading(kicker: str, title: str, description: str, refresh_note: str | 
     ]
     if refresh_note:
         heading.append(html.Div(refresh_note, className="refresh-note"))
-    return html.Div(heading, className="page-heading")
+    return html.Div(
+        heading,
+        className="page-heading has-refresh-note" if refresh_note else "page-heading",
+    )
 
 
 def metric_card(label: str, value: str, suffix: str = "", note: str = ""):

@@ -67,8 +67,8 @@
   .content { padding-left:28px; padding-right:28px; }
   .sidebar { width:205px; padding-left:10px; padding-right:10px; }
   .detail-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  .page-heading { display:block; }
-  .refresh-note { white-space:normal; margin-top:12px; padding-top:0; }
+  .page-heading.has-refresh-note { display:block; }
+  .page-heading.has-refresh-note .refresh-note { white-space:normal; margin-top:12px; padding-top:0; }
 }
 @media (max-width:834px) {
   .topbar { padding-left:18px; padding-right:18px; }
