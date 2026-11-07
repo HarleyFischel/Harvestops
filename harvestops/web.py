@@ -1883,7 +1883,9 @@ def make_app(settings: Settings | None = None):
                         request = store.decide_purchase(
                             request.request_id, user, decision, comment or "", request.version
                         )
-                        alert = f"Recorded {request.status.lower()} decision for {request.request_id}."
+                        alert = (
+                            f"Recorded {request.status.lower()} decision for {request.request_id}."
+                        )
             except (DomainError, PermissionError, TypeError, ValueError) as exc:
                 alert = f"Could not complete action: {exc}"
 
