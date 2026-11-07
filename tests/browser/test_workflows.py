@@ -21,10 +21,21 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
         page.locator("#shipment-grid").wait_for()
         assert page.locator("#ship-product").count() == 1
         assert page.locator("#ship-facility").count() == 1
-        assert page.get_by_text("Upload shipment CSV").count() == 1
+        assert (
+            page.get_by_text(
+                "Shipment import is restricted to operators and administrators."
+            ).count()
+            == 1
+        )
         page.locator("#shipment-grid .ag-center-cols-container .ag-row").first.click()
         page.get_by_text("Selected shipment", exact=True).wait_for()
-        assert page.locator("#shipment-detail").get_by_text("Apply status", exact=True).count() == 1
+        assert page.locator("#apply-status").count() == 0
+        assert (
+            page.get_by_text(
+                "Status changes are restricted to operators and administrators."
+            ).count()
+            == 1
+        )
         next_page = page.get_by_role("button", name="Next page")
         next_page.wait_for()
         assert next_page.is_enabled()
@@ -48,6 +59,10 @@ def test_shipment_and_purchasing_workflow_surfaces_render():
             == 200
         )
         page.reload(wait_until="networkidle")
+        page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
+        page.get_by_role("heading", name="Dock & shipment board").wait_for()
+        assert page.locator("#export-csv").count() == 1
+        assert page.get_by_text("Upload shipment CSV").count() == 1
         page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.locator("#create-purchase").count() == 1
@@ -101,8 +116,16 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
             r"Updated SHP-1004 to (In Transit|Exception|Cancelled)",
             page.locator("#shipment-alert").inner_text(),
         )
+        page.wait_for_function(
+            "() => document.querySelector('#shipment-grid')?.getAttribute('data-dash-is-loading') !== 'true'"
+        )
 
-        page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
+        # Start the approval flow from a clean page state so the prior shipment
+        # refresh cannot race the dynamic purchasing layout.
+        page.goto(
+            f"{os.getenv('HARVESTOPS_URL', 'http://127.0.0.1:8050')}/?page=purchasing",
+            wait_until="networkidle",
+        )
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
         assert page.get_by_text("PR-1002", exact=True).count() >= 1
         page.locator("#purchase-qty").fill("4")
@@ -110,16 +133,25 @@ def test_demo_user_can_change_shipment_and_complete_purchase_approval():
         page.locator("#create-purchase").click()
         alert = page.locator("#purchase-alert")
         alert.get_by_text(re.compile("Created PR-")).wait_for()
-        request_id = re.search(r"PR-[A-Z0-9]+", page.locator(".queue-row").last.inner_text()).group(
-            0
+        page.wait_for_function(
+            "() => document.querySelector('#purchase-list')?.getAttribute('data-dash-is-loading') !== 'true'"
         )
+        request_id = re.search(r"PR-[A-Z0-9]+", alert.inner_text()).group(0)
+        page.get_by_role("button", name=re.compile(request_id)).wait_for()
         page.get_by_role("button", name=re.compile(request_id)).click()
+        page.wait_for_function(
+            "() => !document.querySelector('#submit-selected-purchase')?.disabled"
+        )
         page.locator("#submit-selected-purchase").click()
         alert.get_by_text(re.compile("Submitted " + request_id)).wait_for()
 
         login_demo("demo.approver")
-        page.locator(".nav-list .nav-item").filter(has_text="Purchasing approvals").click()
+        page.goto(
+            f"{os.getenv('HARVESTOPS_URL', 'http://127.0.0.1:8050')}/?page=purchasing",
+            wait_until="networkidle",
+        )
         page.get_by_role("heading", name="Purchasing approvals").wait_for()
+        page.locator(".queue-row").filter(has_text=request_id).wait_for()
         page.locator(".queue-row").filter(has_text=request_id).click()
         page.wait_for_function(
             "() => !document.querySelector('#record-selected-decision')?.disabled"

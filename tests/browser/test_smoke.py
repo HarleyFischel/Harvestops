@@ -55,6 +55,21 @@ def test_keyboard_focus_indicator_is_visible():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
+        token = page.evaluate(
+            "async () => (await fetch('/api/csrf')).json().then(p => p.csrf_token)"
+        )
+        assert (
+            page.evaluate(
+                """async ({token}) => (await fetch('/auth/demo', {
+                    method: 'POST',
+                    headers: {'content-type': 'application/json', 'X-CSRF-Token': token},
+                    body: JSON.stringify({username: 'demo.operator'})
+                })).status""",
+                {"token": token},
+            )
+            == 200
+        )
+        page.reload(wait_until="networkidle")
         page.locator(".nav-list .nav-item").filter(has_text="Dock & shipment board").click()
         page.locator("#shipment-grid .ag-center-cols-container .ag-row").filter(
             has_text="SHP-1004"

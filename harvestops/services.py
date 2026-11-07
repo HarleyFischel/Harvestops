@@ -302,6 +302,15 @@ class InMemoryStore:
     def get_shipment(self, shipment_id: str) -> Shipment | None:
         return self.shipments.get(shipment_id)
 
+    def shipment_page_for_id(self, shipment_id: str, page_size: int) -> int | None:
+        rows = sorted(
+            self.shipments.values(), key=lambda row: (row.planned_departure_utc, row.shipment_id)
+        )
+        for index, row in enumerate(rows):
+            if row.shipment_id == shipment_id:
+                return index // max(1, page_size) + 1
+        return None
+
     def export_shipments(self) -> list[dict]:
         return [
             {

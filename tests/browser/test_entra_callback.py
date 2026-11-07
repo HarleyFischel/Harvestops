@@ -25,7 +25,10 @@ def free_port():
 def test_entra_top_level_get_callback_preserves_lax_session_across_origins(monkeypatch):
     app_port = free_port()
     idp_port = free_port()
-    app_origin = f"http://127.0.0.1:{app_port}"
+    # Use different hostnames as well as different ports.  localhost and the
+    # loopback IP are different sites for cookie SameSite calculations while
+    # remaining fully local and deterministic for the browser test.
+    app_origin = f"http://localhost:{app_port}"
     idp_origin = f"http://127.0.0.1:{idp_port}"
     settings = Settings(
         secret_key="test-secret",

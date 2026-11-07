@@ -98,6 +98,24 @@ class SqlServerRepository:
         rows = self.shipment_rows({"shipment_id": shipment_id}, 1, 1)
         return rows[0] if rows else None
 
+    def shipment_page_for_id(self, shipment_id: str, page_size: int) -> int | None:
+        target = self.query(
+            "SELECT planned_departure_utc, shipment_id FROM dbo.v_shipment_board WHERE shipment_id = ?",
+            (shipment_id,),
+        )
+        if not target:
+            return None
+        row = target[0]
+        position = self.query(
+            """SELECT COUNT_BIG(*) AS position
+               FROM dbo.v_shipment_board
+               WHERE planned_departure_utc < ?
+                  OR (planned_departure_utc = ? AND shipment_id <= ?)""",
+            (row["planned_departure_utc"], row["planned_departure_utc"], row["shipment_id"]),
+        )[0]["position"]
+        size = max(1, int(page_size))
+        return (int(position) + size - 1) // size
+
     @staticmethod
     def _shipment_filter(filters: dict) -> tuple[str, list]:
         clauses = ["1=1"]

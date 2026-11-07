@@ -58,6 +58,13 @@
 .purchase-actions textarea { min-height:42px; border:1px solid #bcccdc; border-radius:6px; padding:8px; font:inherit; }
 .identity-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .signout-form { display:inline; }
+.permission-note { color:var(--muted); font-size:12px; line-height:1.45; }
+.timezone-note { color:var(--muted); font-size:12px; margin:-8px 0 16px; }
+.date-filter .DateRangePicker, .date-filter .DateRangePickerInput { width:100%; }
+.date-filter .DateRangePickerInput { display:flex; align-items:center; }
+.date-filter .DateInput { flex:1 1 0; min-width:0; }
+.date-filter .DateInput_input { width:100%; min-height:38px; padding:8px 10px; font:inherit; color:var(--ink); }
+.date-filter .DateRangePickerInput_arrow { flex:0 0 auto; }
 .button.quiet { background:transparent; color:#d9e2ec; border:1px solid #6b8296; }
 .ag-theme-alpine { --ag-selected-row-background-color:#dff4ef; --ag-row-hover-color:#effaf8; --ag-font-family:'DM Sans',sans-serif; }
 .ag-theme-alpine .ag-row-selected { font-weight:600; }
