@@ -3,7 +3,7 @@ import logging
 
 from harvestops.config import Settings
 from harvestops.logging_config import JsonFormatter, redact_message
-from harvestops.web import make_app
+from harvestops.web import delivery_requirements, make_app
 
 
 def test_health_and_readiness():
@@ -421,3 +421,40 @@ def test_import_endpoint_is_authorized_and_idempotent():
     assert first.status_code == 201
     assert first.get_json()["applied"] == 1
     assert second.get_json()["applied"] == 0
+
+
+def test_delivery_evidence_is_sanitized_and_role_protected():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    assert client.get("/api/delivery-evidence").status_code == 403
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    response = client.get("/api/delivery-evidence")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["repository"] == "HarleyFischel/Harvestops"
+    assert all(source["visibility"] == "public" for source in payload["sources"])
+    assert client.get("/api/delivery-evidence/details").status_code == 403
+    operator_client = app.server.test_client()
+    operator_client.post("/auth/demo", json={"username": "demo.operator"})
+    assert operator_client.get("/api/delivery-evidence/details").status_code == 200
+
+
+def test_delivery_document_route_is_allowlisted_escaped_and_authenticated():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    client = app.server.test_client()
+    assert client.get("/delivery/documents/architecture").status_code == 401
+    client.post("/auth/demo", json={"username": "demo.viewer"})
+    response = client.get("/delivery/documents/architecture")
+    assert response.status_code == 200
+    assert "Architecture" in response.text
+    assert "&lt;script&gt;" not in response.text
+    assert client.get("/delivery/documents/%2e%2e/%2eenv").status_code == 404
+    assert client.get("/delivery/documents/not-allowlisted").status_code == 404
+
+
+def test_delivery_navigation_and_requirement_manifest_are_present():
+    app = make_app(Settings(secret_key="test", demo_mode=True, storage_mode="demo"))
+    layout = str(app.layout())
+    assert "Delivery &amp; Quality" in layout or "Delivery & Quality" in layout
+    assert "delivery" in str(app.callback_map)
+    assert any(item["id"] == "OPS-002" for item in delivery_requirements())

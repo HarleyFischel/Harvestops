@@ -1,6 +1,16 @@
 FROM python:3.12-slim AS runtime
 ARG TARGETARCH
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ARG HARVESTOPS_VERSION=0.1.0
+ARG HARVESTOPS_COMMIT=unknown
+ARG HARVESTOPS_BUILD_TIMESTAMP=unknown
+ARG HARVESTOPS_ENVIRONMENT=container
+ARG HARVESTOPS_IMAGE_DIGEST=unknown
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    HARVESTOPS_VERSION=$HARVESTOPS_VERSION \
+    HARVESTOPS_COMMIT=$HARVESTOPS_COMMIT \
+    HARVESTOPS_BUILD_TIMESTAMP=$HARVESTOPS_BUILD_TIMESTAMP \
+    HARVESTOPS_ENVIRONMENT=$HARVESTOPS_ENVIRONMENT \
+    HARVESTOPS_IMAGE_DIGEST=$HARVESTOPS_IMAGE_DIGEST
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl gnupg ca-certificates unixodbc \
  && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
@@ -16,6 +26,8 @@ COPY harvestops ./harvestops
 COPY db ./db
 COPY knowledge ./knowledge
 COPY data ./data
+COPY docs ./docs
+COPY evidence ./evidence
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir --require-hashes -r requirements.lock \
  && pip install --no-cache-dir --no-deps . \

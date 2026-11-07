@@ -21,6 +21,7 @@ dependencies = [
   "cryptography==50.0.0",
   "msal==1.39.0",
   "mcp==1.30.0",
+  "requests==2.34.2",
   "redis==5.2.1",
   "azure-identity==1.25.1",
 ]

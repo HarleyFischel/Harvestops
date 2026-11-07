@@ -7,3 +7,5 @@
 5. Search the knowledge assistant and point out citations and search-vs-generated-answer labeling.
 6. Show the SQL migrations, pyodbc repository, external-database Compose, and x86-only SQL Server stack.
 7. Show the GitHub Actions workflow, Bicep template, MCP tools, legacy React sample, and validation report.
+
+8. Open **Delivery & Quality**, search for `OPS-002`, and trace the shipment-status requirement to the service/repository implementation, its SQL/browser tests, and the exact hosted CI run. Point out the separate running-commit and default-branch CI states, the empty formal-release section, and the remaining Entra/Azure gates.

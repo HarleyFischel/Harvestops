@@ -103,7 +103,7 @@ def test_navigation_labels_do_not_wrap_at_sidebar_breakpoint():
         page = browser.new_page(viewport={"width": 800, "height": 900})
         page.goto(os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle")
         labels = page.locator(".nav-list .nav-item")
-        assert labels.count() == 4
+        assert labels.count() == 5
         for index in range(labels.count()):
             label = labels.nth(index)
             assert label.evaluate("element => getComputedStyle(element).whiteSpace") == "nowrap"

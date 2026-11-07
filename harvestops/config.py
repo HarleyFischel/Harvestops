@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     entra_redirect_uri: str = "http://localhost:8050/auth/callback"
     claude_api_key: str = ""
     claude_model: str = "claude-3-5-haiku-latest"
+    evidence_snapshot_path: str = "evidence/snapshot.json"
+    github_repository: str = "HarleyFischel/Harvestops"
+    github_api_url: str = "https://api.github.com"
+    github_evidence_token: str = ""
+    github_evidence_timeout: float = 5.0
+    evidence_cache_seconds: int = 300
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

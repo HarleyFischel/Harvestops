@@ -71,6 +71,8 @@ AG Grid Community is the only required grid feature. Enterprise features are not
 
 See docs/validation-report.md for actual evidence and unverified gates.
 
+The read-only [Delivery & Quality dashboard](docs/delivery-quality.md) connects curated requirements to code, tests, hosted CI, release documentation, and support evidence. It uses `evidence/snapshot.json` without credentials; refresh it intentionally with `scripts/refresh-evidence-snapshot.py` after collecting structured JUnit results. It never presents Git commits as production deployments.
+
 The upload-ready fixture is `data/sample-shipment-updates.csv`. It demonstrates one new
 shipment, one existing shipment that is safely treated as idempotent, and one rejected
 invalid record. In demo mode, use the shipment board's **Upload shipment CSV** control

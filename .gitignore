@@ -13,6 +13,7 @@ coverage.xml
 htmlcov/
 playwright-report/
 test-results/
+artifacts/
 node_modules/
 legacy/dist/
 *.log

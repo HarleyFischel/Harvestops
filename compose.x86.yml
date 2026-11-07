@@ -69,6 +69,12 @@ services:
       context: .
       dockerfile: Dockerfile
       platforms: [linux/amd64]
+      args:
+        HARVESTOPS_VERSION: ${HARVESTOPS_VERSION:-0.1.0}
+        HARVESTOPS_COMMIT: ${HARVESTOPS_COMMIT:-unknown}
+        HARVESTOPS_BUILD_TIMESTAMP: ${HARVESTOPS_BUILD_TIMESTAMP:-unknown}
+        HARVESTOPS_ENVIRONMENT: ${HARVESTOPS_ENVIRONMENT:-x86-development}
+        HARVESTOPS_IMAGE_DIGEST: ${HARVESTOPS_IMAGE_DIGEST:-unknown}
     platform: linux/amd64
     env_file: .env
     environment:

@@ -28,6 +28,12 @@ services:
       context: .
       dockerfile: Dockerfile
       platforms: [linux/arm64]
+      args:
+        HARVESTOPS_VERSION: ${HARVESTOPS_VERSION:-0.1.0}
+        HARVESTOPS_COMMIT: ${HARVESTOPS_COMMIT:-unknown}
+        HARVESTOPS_BUILD_TIMESTAMP: ${HARVESTOPS_BUILD_TIMESTAMP:-unknown}
+        HARVESTOPS_ENVIRONMENT: ${HARVESTOPS_ENVIRONMENT:-mac-sql-development}
+        HARVESTOPS_IMAGE_DIGEST: ${HARVESTOPS_IMAGE_DIGEST:-unknown}
     platform: linux/arm64
     env_file: .env.mac-sql
     environment:
@@ -86,6 +92,12 @@ services:
       context: .
       dockerfile: Dockerfile
       platforms: [linux/arm64]
+      args:
+        HARVESTOPS_VERSION: ${HARVESTOPS_VERSION:-0.1.0}
+        HARVESTOPS_COMMIT: ${HARVESTOPS_COMMIT:-unknown}
+        HARVESTOPS_BUILD_TIMESTAMP: ${HARVESTOPS_BUILD_TIMESTAMP:-unknown}
+        HARVESTOPS_ENVIRONMENT: ${HARVESTOPS_ENVIRONMENT:-mac-sql-development}
+        HARVESTOPS_IMAGE_DIGEST: ${HARVESTOPS_IMAGE_DIGEST:-unknown}
     platform: linux/arm64
     env_file: .env.mac-sql
     environment:

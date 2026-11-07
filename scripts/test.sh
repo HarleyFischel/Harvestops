@@ -6,4 +6,5 @@ if [[ -z "${PYTHON_BIN:-}" ]]; then
   done
 fi
 PYTHON_BIN="${PYTHON_BIN:-$(command -v python3.12 || command -v python || command -v python3)}"
+export PYTHONPATH="${PYTHONPATH:-.}"
 "$PYTHON_BIN" -m pytest

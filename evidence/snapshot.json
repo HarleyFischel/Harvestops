@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "snapshot_type": "sanitized-portfolio",
+  "repository": "HarleyFischel/Harvestops",
+  "source_commit": "working-tree",
+  "collected_at_utc": "2026-11-07T12:47:20Z",
+  "scope": "Explicitly recorded local structured results and optional hosted CI metadata.",
+  "sources": [
+    {
+      "label": "GitHub Actions CI",
+      "url": "https://github.com/HarleyFischel/Harvestops/actions/runs/42336164890",
+      "visibility": "public"
+    },
+    {
+      "label": "Validation report",
+      "url": "https://github.com/HarleyFischel/Harvestops/blob/main/docs/validation-report.md",
+      "visibility": "public"
+    },
+    {
+      "label": "Source repository",
+      "url": "https://github.com/HarleyFischel/Harvestops",
+      "visibility": "public"
+    }
+  ],
+  "ci_runs": [
+    {
+      "id": "42336164890",
+      "label": "CI",
+      "status": "passed",
+      "conclusion": "success",
+      "commit": "0762134c4f5f64155c9e3af4bd3aa2f16c91b30d",
+      "url": "https://github.com/HarleyFischel/Harvestops/actions/runs/42336164890",
+      "scope": "hosted-main",
+      "collected_at_utc": "2026-11-07T04:16:00Z",
+      "jobs": [
+        "test",
+        "sql-integration",
+        "legacy",
+        "secret-scan",
+        "build",
+        "image-scan"
+      ]
+    }
+  ],
+  "quality": [
+    {
+      "id": "local-python-suite",
+      "label": "Local Python suite",
+      "status": "passed",
+      "summary": "81 tests, 0 failures, 4 skipped",
+      "commit": "working-tree",
+      "scope": "local structured artifact",
+      "collected_at_utc": "2026-11-07T12:47:20Z"
+    },
+    {
+      "id": "browser-suite",
+      "label": "Browser suite",
+      "status": "passed",
+      "summary": "20 tests, 0 failures, 0 skipped",
+      "commit": "working-tree",
+      "scope": "local structured artifact",
+      "collected_at_utc": "2026-11-07T12:47:20Z"
+    },
+    {
+      "id": "sql-integration-suite",
+      "label": "SQL integration suite",
+      "status": "passed",
+      "summary": "4 tests, 0 failures, 0 skipped",
+      "commit": "working-tree",
+      "scope": "local structured artifact",
+      "collected_at_utc": "2026-11-07T12:47:20Z"
+    }
+  ],
+  "releases": [],
+  "support_documents": [
+    {
+      "id": "architecture",
+      "label": "Architecture",
+      "url": "/delivery/documents/architecture",
+      "visibility": "public"
+    },
+    {
+      "id": "sdlc",
+      "label": "SDLC and review standards",
+      "url": "/delivery/documents/sdlc",
+      "visibility": "public"
+    },
+    {
+      "id": "test-strategy",
+      "label": "Test strategy and UAT",
+      "url": "/delivery/documents/uat",
+      "visibility": "public"
+    },
+    {
+      "id": "onboarding",
+      "label": "Developer onboarding",
+      "url": "/delivery/documents/onboarding",
+      "visibility": "public"
+    },
+    {
+      "id": "release",
+      "label": "Release and rollback",
+      "url": "/delivery/documents/release",
+      "visibility": "public"
+    },
+    {
+      "id": "runbook",
+      "label": "Support runbook",
+      "url": "/delivery/documents/runbook",
+      "visibility": "public"
+    },
+    {
+      "id": "limitations",
+      "label": "Known limitations",
+      "url": "/delivery/documents/limitations",
+      "visibility": "public"
+    }
+  ],
+  "open_work": [
+    {
+      "id": "live-entra",
+      "label": "Live Entra tenant sign-in",
+      "status": "unverified",
+      "summary": "Needs tenant/app registration and account test.",
+      "url": "https://github.com/HarleyFischel/Harvestops/blob/main/docs/identity.md"
+    },
+    {
+      "id": "azure",
+      "label": "Azure Container Apps deployment",
+      "status": "unverified",
+      "summary": "Templates are validated locally; no Azure resources were provisioned.",
+      "url": "https://github.com/HarleyFischel/Harvestops/blob/main/docs/azure.md"
+    },
+    {
+      "id": "external-sql",
+      "label": "External Proxmox SQL host",
+      "status": "unverified",
+      "summary": "The Mac SQL profile is verified; external-host deployment remains environment-dependent.",
+      "url": "https://github.com/HarleyFischel/Harvestops/blob/main/docs/known-limitations.md"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import logging
 import math
 import secrets
@@ -13,10 +14,13 @@ import plotly.graph_objects as go
 from dash import ALL, Dash, Input, Output, State, ctx, dcc, html, no_update
 from dash_ag_grid import AgGrid
 from flask import Flask, has_request_context, jsonify, make_response, redirect, request, session
+from markupsafe import escape
 
 from .auth import EntraAuth
+from .build_info import get_build_info
 from .config import Settings, get_settings
 from .domain import User
+from .evidence import EvidenceService
 from .knowledge import KnowledgeService
 from .logging_config import configure_logging
 from .services import ALLOWED_TRANSITIONS, DomainError, InMemoryStore
@@ -24,6 +28,16 @@ from .sql_store import SqlServerStore
 from .ui import empty_state, metric_card, page_heading, section_heading
 
 SHIPMENT_PAGE_SIZE = 4
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DELIVERY_DOCUMENTS = {
+    "architecture": ("Architecture", "docs/architecture.md"),
+    "sdlc": ("SDLC and review standards", "docs/sdlc.md"),
+    "uat": ("Test strategy and UAT", "docs/uat-checklist.md"),
+    "onboarding": ("Developer onboarding", "docs/developer-onboarding.md"),
+    "release": ("Release and rollback", "docs/change-management.md"),
+    "runbook": ("Support runbook", "docs/runbook.md"),
+    "limitations": ("Known limitations", "docs/known-limitations.md"),
+}
 
 configure_logging()
 log = logging.getLogger("harvestops")
@@ -140,6 +154,13 @@ def build_layout(store: InMemoryStore, settings: Settings):
                                     html.Button(
                                         "Knowledge assistant",
                                         id="nav-knowledge",
+                                        className="nav-item",
+                                        n_clicks=0,
+                                        type="button",
+                                    ),
+                                    html.Button(
+                                        "Delivery & Quality",
+                                        id="nav-delivery",
                                         className="nav-item",
                                         n_clicks=0,
                                         type="button",
@@ -1146,6 +1167,330 @@ def knowledge_citations(documents):
     ]
 
 
+def delivery_requirements() -> list[dict]:
+    """Load the curated traceability manifest from the repository image."""
+    path = REPO_ROOT / "evidence" / "requirements.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        requirements = payload.get("requirements", [])
+        return requirements if isinstance(requirements, list) else []
+    except (OSError, json.JSONDecodeError):
+        log.warning("delivery requirements manifest is unavailable")
+        return []
+
+
+def delivery_status_badge(status: str):
+    label = status.replace("_", " ").title()
+    return html.Span(label, className=f"evidence-status evidence-{status}")
+
+
+def delivery_link(label: str, url: str | None):
+    if not url:
+        return html.Span("Unknown", className="muted-value")
+    return html.A(label, href=url, target="_blank", rel="noreferrer")
+
+
+def delivery_requirement_table(requirements: list[dict], query: str = ""):
+    normalized = (query or "").strip().lower()
+    visible = [
+        requirement
+        for requirement in requirements
+        if not normalized or normalized in json.dumps(requirement, sort_keys=True).lower()
+    ]
+    if not visible:
+        return empty_state("No curated requirements match that search.")
+    rows = []
+    for requirement in visible:
+        code_links = [
+            delivery_link(path, f"https://github.com/HarleyFischel/Harvestops/blob/main/{path}")
+            for path in requirement.get("code", [])
+        ]
+        test_links = [
+            delivery_link(path, f"https://github.com/HarleyFischel/Harvestops/blob/main/{path}")
+            for path in requirement.get("tests", [])
+        ]
+        rows.append(
+            html.Tr(
+                [
+                    html.Th(requirement.get("id", "Unknown"), scope="row"),
+                    html.Td(requirement.get("purpose", "Unknown")),
+                    html.Td(requirement.get("acceptance", "Unknown")),
+                    html.Td(
+                        delivery_status_badge(requirement.get("implementation_status", "unknown"))
+                    ),
+                    html.Td(html.Div(code_links, className="evidence-links")),
+                    html.Td(html.Div(test_links, className="evidence-links")),
+                    html.Td(requirement.get("verification_method", "Unknown")),
+                ]
+            )
+        )
+    return html.Div(
+        html.Table(
+            [
+                html.Thead(
+                    html.Tr(
+                        [
+                            html.Th("ID"),
+                            html.Th("Business purpose"),
+                            html.Th("Acceptance criteria"),
+                            html.Th("Implementation"),
+                            html.Th("Code"),
+                            html.Th("Tests"),
+                            html.Th("Verification method"),
+                        ]
+                    )
+                ),
+                html.Tbody(rows),
+            ],
+            className="data-table evidence-table",
+        ),
+        className="table-scroll",
+    )
+
+
+def delivery_quality_view(evidence: EvidenceService, user: User | None):
+    snapshot = evidence.view_for(user)
+    runtime = snapshot.get("runtime", {})
+    ci_runs = snapshot.get("ci_runs", [])
+    runtime_commit = runtime.get("source_commit", "Unknown")
+    matching_runs = [run for run in ci_runs if run.get("commit") == runtime_commit]
+    default_run = ci_runs[0] if ci_runs else None
+    runtime_ci = (
+        matching_runs[0]
+        if matching_runs
+        else {
+            "status": "not_configured",
+            "label": "No CI evidence recorded for the running commit",
+            "commit": runtime_commit,
+        }
+    )
+    requirements = delivery_requirements()
+    quality = snapshot.get("quality", [])
+    open_work = snapshot.get("open_work", [])
+    collection_state = snapshot.get("evidence_state", "unknown")
+    return html.Div(
+        [
+            page_heading(
+                "Evidence workspace",
+                "Delivery & Quality",
+                "A read-only view connecting implemented requirements to tests, CI, release evidence, and support documentation.",
+                f"Evidence snapshot · {snapshot.get('collected_at_utc', 'Unknown')} · {collection_state.title()}",
+            ),
+            html.Div(
+                "GitHub remains authoritative for source, issues, pull requests, and hosted CI. This page presents evidence; it does not approve or deploy releases.",
+                className="info-banner",
+                role="note",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            section_heading(
+                                "Running application",
+                                "Runtime identity is build metadata, never inferred from the newest commit.",
+                            ),
+                            html.Dl(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Dt("Version"),
+                                            html.Dd(runtime.get("version", "Unknown")),
+                                        ],
+                                        className="evidence-datum",
+                                    ),
+                                    html.Div(
+                                        [html.Dt("Source commit"), html.Dd(runtime_commit)],
+                                        className="evidence-datum",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Dt("Environment"),
+                                            html.Dd(runtime.get("environment", "Unknown")),
+                                        ],
+                                        className="evidence-datum",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Dt("Build timestamp"),
+                                            html.Dd(runtime.get("build_timestamp_utc", "Unknown")),
+                                        ],
+                                        className="evidence-datum",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Dt("Image digest"),
+                                            html.Dd(runtime.get("image_digest", "Unknown")),
+                                        ],
+                                        className="evidence-datum",
+                                    ),
+                                ],
+                                className="evidence-definition-list",
+                            ),
+                        ],
+                        className="panel",
+                    ),
+                    html.Div(
+                        [
+                            section_heading(
+                                "CI for running commit",
+                                "This is separate from the latest default-branch run.",
+                            ),
+                            delivery_status_badge(runtime_ci.get("status", "unknown")),
+                            html.P(
+                                runtime_ci.get("label", "Unknown"), className="evidence-summary"
+                            ),
+                            html.P(runtime_ci.get("commit", "Unknown"), className="mono-value"),
+                            delivery_link("Open exact run", runtime_ci.get("url")),
+                        ],
+                        className="panel evidence-state-panel",
+                    ),
+                    html.Div(
+                        [
+                            section_heading(
+                                "Latest default-branch CI",
+                                "The newest recorded GitHub Actions run is not automatically a deployment.",
+                            ),
+                            delivery_status_badge((default_run or {}).get("status", "unknown")),
+                            html.P(
+                                (default_run or {}).get("label", "No run recorded"),
+                                className="evidence-summary",
+                            ),
+                            html.P(
+                                (default_run or {}).get("commit", "Unknown"), className="mono-value"
+                            ),
+                            delivery_link("Open exact run", (default_run or {}).get("url")),
+                        ],
+                        className="panel evidence-state-panel",
+                    ),
+                ],
+                className="evidence-overview-grid",
+            ),
+            html.Div(
+                [
+                    section_heading(
+                        "Outstanding verification gates",
+                        "Unverified means evidence is not available; it is not a passing result.",
+                    ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    delivery_status_badge(item.get("status", "unknown")),
+                                    html.Strong(item.get("label", "Unknown")),
+                                    html.P(item.get("summary", "")),
+                                ],
+                                className="evidence-list-item",
+                            )
+                            for item in open_work
+                        ]
+                        or [empty_state("No outstanding gates are recorded in this snapshot.")],
+                        className="evidence-list",
+                    ),
+                ],
+                className="panel",
+            ),
+            html.Div(
+                [
+                    section_heading(
+                        "Requirements and traceability",
+                        "Curated mappings to implementation and tests; not retrospective product approval.",
+                    ),
+                    dcc.Input(
+                        id="delivery-requirement-search",
+                        placeholder="Search requirement ID, purpose, code, or test",
+                        className="search-input",
+                    ),
+                    html.Div(
+                        id="delivery-requirements-table",
+                        children=delivery_requirement_table(requirements),
+                        className="evidence-table-panel",
+                    ),
+                ],
+                className="panel",
+            ),
+            html.Div(
+                [
+                    section_heading(
+                        "Quality evidence",
+                        "Counts are shown only from structured or explicitly recorded evidence.",
+                    ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    delivery_status_badge(item.get("status", "unknown")),
+                                    html.Strong(item.get("label", "Unknown")),
+                                    html.P(item.get("summary", "")),
+                                    delivery_link("Evidence", item.get("url")),
+                                ],
+                                className="evidence-list-item",
+                            )
+                            for item in quality
+                        ]
+                        or [empty_state("No structured quality evidence is available.")],
+                        className="evidence-list",
+                    ),
+                ],
+                className="panel",
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            section_heading(
+                                "Releases and change management",
+                                "Git commits are not production deployments.",
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            delivery_status_badge(item.get("status", "unknown")),
+                                            html.Strong(item.get("label", "Unknown")),
+                                            html.P(item.get("summary", "")),
+                                        ],
+                                        className="evidence-list-item",
+                                    )
+                                    for item in snapshot.get("releases", [])
+                                ]
+                                or [
+                                    empty_state(
+                                        "No formal release or deployment history is recorded yet. The release and rollback documents are checklist templates, not completed execution records."
+                                    )
+                                ],
+                                className="evidence-list",
+                            ),
+                        ],
+                        className="panel",
+                    ),
+                    html.Div(
+                        [
+                            section_heading(
+                                "Support documentation",
+                                "Allowlisted, authenticated document views.",
+                            ),
+                            html.Ul(
+                                [
+                                    html.Li(
+                                        html.A(
+                                            item.get("label", "Document"), href=item.get("url", "")
+                                        )
+                                    )
+                                    for item in snapshot.get("support_documents", [])
+                                ],
+                                className="document-links",
+                            ),
+                        ],
+                        className="panel",
+                    ),
+                ],
+                className="evidence-two-column",
+            ),
+        ],
+        className="delivery-quality-page",
+    )
+
+
 def make_app(settings: Settings | None = None):
     settings = settings or get_settings()
     errors = settings.validate_for_runtime()
@@ -1153,6 +1498,7 @@ def make_app(settings: Settings | None = None):
         raise RuntimeError("Invalid configuration: " + "; ".join(errors))
     store = SqlServerStore(settings) if settings.storage_mode == "sqlserver" else InMemoryStore()
     knowledge = KnowledgeService(settings.claude_api_key, settings.claude_model)
+    evidence = EvidenceService(settings, get_build_info())
     server = Flask(__name__)
     server.secret_key = settings.secret_key
     server.config.update(
@@ -1318,6 +1664,38 @@ def make_app(settings: Settings | None = None):
         response.headers["Content-Disposition"] = "inline"
         return response
 
+    @server.get("/delivery/documents/<path:document_id>")
+    def delivery_document(document_id):
+        if not current_user(store):
+            return jsonify({"error": "authentication required"}), 401
+        if Path(document_id).name != document_id or "\\" in document_id:
+            return jsonify({"error": "document not found"}), 404
+        document = DELIVERY_DOCUMENTS.get(document_id)
+        if not document:
+            return jsonify({"error": "document not found"}), 404
+        title, relative_path = document
+        path = (REPO_ROOT / relative_path).resolve()
+        docs_root = (REPO_ROOT / "docs").resolve()
+        if docs_root not in path.parents or not path.is_file():
+            return jsonify({"error": "document not found"}), 404
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            return jsonify({"error": "document unavailable"}), 404
+        safe_title = escape(title)
+        safe_content = escape(content)
+        response = make_response(
+            "<!doctype html><html><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            f"<title>HarvestOps · {safe_title}</title></head>"
+            "<body style='font-family:system-ui,sans-serif;max-width:960px;margin:32px auto;padding:0 20px;color:#102a43'>"
+            f"<p><a href='/?page=delivery'>← Delivery &amp; Quality</a></p><h1>{safe_title}</h1>"
+            f"<pre style='white-space:pre-wrap;line-height:1.55'>{safe_content}</pre></body></html>"
+        )
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
+        response.headers["Content-Disposition"] = "inline"
+        return response
+
     @server.post("/auth/logout")
     def logout():
         if current_user(store) and not valid_csrf(
@@ -1335,6 +1713,16 @@ def make_app(settings: Settings | None = None):
         if not current_user(store):
             return jsonify({"error": "authentication required"}), 403
         return jsonify({"csrf_token": csrf_token()})
+
+    @server.get("/api/delivery-evidence")
+    @require_role(store, "viewer", "operator", "admin")
+    def delivery_evidence():
+        return jsonify(evidence.view_for(current_user(store)))
+
+    @server.get("/api/delivery-evidence/details")
+    @require_role(store, "operator", "admin")
+    def delivery_evidence_details():
+        return jsonify(evidence.view_for(current_user(store)))
 
     @server.get("/api/shipments/export")
     @require_role(store, "operator", "admin")
@@ -1404,10 +1792,12 @@ def make_app(settings: Settings | None = None):
         Output("nav-shipments", "className"),
         Output("nav-purchasing", "className"),
         Output("nav-knowledge", "className"),
+        Output("nav-delivery", "className"),
         Input("nav-dashboard", "n_clicks"),
         Input("nav-shipments", "n_clicks"),
         Input("nav-purchasing", "n_clicks"),
         Input("nav-knowledge", "n_clicks"),
+        Input("nav-delivery", "n_clicks"),
         Input("active-user", "data"),
         Input("url", "search"),
     )
@@ -1420,6 +1810,7 @@ def make_app(settings: Settings | None = None):
             "nav-shipments": "shipments",
             "nav-purchasing": "purchasing",
             "nav-knowledge": "knowledge",
+            "nav-delivery": "delivery",
         }.get(ctx.triggered_id, requested_page or "dashboard")
         requested_shipment = query.get("shipment", [None])[0] if page == "shipments" else None
         view = {
@@ -1427,10 +1818,11 @@ def make_app(settings: Settings | None = None):
             "shipments": shipments_view(store, requested_shipment, settings),
             "purchasing": purchasing_view(store, settings),
             "knowledge": knowledge_view(),
+            "delivery": delivery_quality_view(evidence, current_user(store)),
         }.get(page, dashboard_view(store))
         classes = [
             f"nav-item{' active' if selected == page else ''}"
-            for selected in ("dashboard", "shipments", "purchasing", "knowledge")
+            for selected in ("dashboard", "shipments", "purchasing", "knowledge", "delivery")
         ]
         return view, *classes
 
@@ -1466,6 +1858,13 @@ def make_app(settings: Settings | None = None):
             session["username"] = username
             return username
         return no_update
+
+    @app.callback(
+        Output("delivery-requirements-table", "children"),
+        Input("delivery-requirement-search", "value"),
+    )
+    def filter_delivery_requirements(query):
+        return delivery_requirement_table(delivery_requirements(), query or "")
 
     @app.callback(
         Output("kpi-row", "children"),

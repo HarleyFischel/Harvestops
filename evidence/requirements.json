@@ -1,0 +1,58 @@
+{
+  "manifest_version": 1,
+  "kind": "curated-requirements",
+  "repository": "HarleyFischel/Harvestops",
+  "description": "Small curated traceability set for implemented HarvestOps behavior. This is not a historical product-manager approval record.",
+  "requirements": [
+    {
+      "id": "OPS-001",
+      "purpose": "Operators need one scoped view of shipment service and production signals.",
+      "acceptance": "Dashboard filters apply consistently to KPI cards, charts, and exceptions.",
+      "implementation_status": "implemented",
+      "verification_method": "SQL-backed service tests and browser dashboard smoke",
+      "code": ["harvestops/web.py", "harvestops/repository.py"],
+      "tests": ["tests/test_web.py", "tests/browser/test_smoke.py"],
+      "evidence": "docs/validation-report.md"
+    },
+    {
+      "id": "OPS-002",
+      "purpose": "Operators need safe shipment updates with bounded paging and concurrency protection.",
+      "acceptance": "A permitted transition updates one selected shipment; stale versions are rejected and audited.",
+      "implementation_status": "implemented",
+      "verification_method": "SQL integration and browser workflow tests",
+      "code": ["harvestops/services.py", "harvestops/sql_store.py", "harvestops/web.py"],
+      "tests": ["tests/test_services.py", "tests/integration/test_sqlserver.py", "tests/browser/test_navigation_permissions.py"],
+      "evidence": "docs/validation-report.md"
+    },
+    {
+      "id": "PUR-001",
+      "purpose": "Purchasing requests need a transactional approval workflow.",
+      "acceptance": "Draft requests can be submitted; authorized approvers can decide; self-approval is prevented.",
+      "implementation_status": "implemented",
+      "verification_method": "Service and browser workflow tests",
+      "code": ["harvestops/services.py", "harvestops/sql_store.py", "harvestops/web.py"],
+      "tests": ["tests/test_services.py", "tests/browser/test_workflows.py"],
+      "evidence": "docs/validation-report.md"
+    },
+    {
+      "id": "SEC-001",
+      "purpose": "Identity and authorization boundaries must remain server-side.",
+      "acceptance": "Demo and Entra roles are checked on routes and callbacks; invalid OAuth state is rejected.",
+      "implementation_status": "implemented",
+      "verification_method": "Security tests and controlled cross-site browser simulation",
+      "code": ["harvestops/auth.py", "harvestops/web.py"],
+      "tests": ["tests/test_auth.py", "tests/test_web.py", "tests/browser/test_entra_callback.py"],
+      "evidence": "docs/identity.md"
+    },
+    {
+      "id": "REL-001",
+      "purpose": "A release must be traceable to source, CI, and runtime evidence.",
+      "acceptance": "The application exposes safe build identity and the Delivery & Quality page distinguishes runtime from GitHub evidence.",
+      "implementation_status": "implemented",
+      "verification_method": "Evidence service tests, browser rendering, and hosted CI",
+      "code": ["harvestops/build_info.py", "harvestops/evidence.py", "harvestops/web.py"],
+      "tests": ["tests/test_evidence.py", "tests/browser/test_delivery_quality.py"],
+      "evidence": "docs/validation-report.md"
+    }
+  ]
+}
