@@ -110,3 +110,29 @@ def test_header_spans_common_ipad_widths_without_horizontal_overflow():
             assert page.evaluate("document.documentElement.scrollWidth") <= width
             page.close()
         browser.close()
+
+
+@pytest.mark.skipif(sync_playwright is None, reason="Playwright is not installed")
+def test_tablet_operations_heading_stacks_freshness_note():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        for width in (768, 834):
+            page = browser.new_page(viewport={"width": width, "height": 1024})
+            page.goto(
+                os.getenv("HARVESTOPS_URL", "http://127.0.0.1:8050"), wait_until="networkidle"
+            )
+            heading = page.locator(".page-heading")
+            freshness = page.locator(".refresh-note")
+            heading_box = heading.bounding_box()
+            title_box = page.locator(".page-heading h1").bounding_box()
+            assert heading_box is not None and title_box is not None
+            assert (
+                page.locator(".page-heading").evaluate(
+                    "element => getComputedStyle(element).display"
+                )
+                == "block"
+            )
+            assert title_box["width"] > heading_box["width"] * 0.7
+            assert freshness.evaluate("element => getComputedStyle(element).whiteSpace") == "normal"
+            page.close()
+        browser.close()
